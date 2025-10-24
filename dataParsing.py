@@ -4,7 +4,7 @@ import pandas as pd
 
 # Load CSVs
 part = pd.read_csv("data/pbp_participation_2024.csv")
-pbp = pd.read_csv("data/pbp_2024.csv")
+pbp = pd.read_csv("data/pbp_2024_0.csv")
 
 # Merge participation with play-by-play context
 merged = pd.merge(
