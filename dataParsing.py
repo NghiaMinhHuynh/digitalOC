@@ -173,14 +173,14 @@ if __name__ == "__main__":
     kc = Team("KC", merged)
 
     #print(kc)
-    """print("Offensive Snaps:", kc.offensive_snaps())
+    print("Offensive Snaps:", kc.offensive_snaps())
     print("\nOffensive Personnel:\n", kc.offensive_personnel_counts())
     print("\nFormations:\n", kc.formation_counts())
     print("\nDefensive Personnel Faced:\n", kc.defensive_personnel_faced())
     print("\nPressure Rate:", kc.pressure_rate())
     print(kc.success_rate_by_down())
     print(kc.success_rate_by_playType())
-    print(kc.playType_by_down())"""
+    print(kc.playType_by_down())
     #print("Blitz rate by down:\n", kc.blitz_rate_by_down())
     #print("KC success vs blitz:", kc.success_against_blitz())
     
