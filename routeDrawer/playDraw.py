@@ -1,24 +1,22 @@
 '''
-This currently uses a play from the FULLpersonnel{year}.csv files
+Currently uses a dict as input
 
-Input necessary to implement with model:
-- Down
-- Distance
-- Yard line
-- Play type (Run/Pass)
+input dictionary:
+        "yardline_100": int,
+        "down": int,
+        "ydstogo": int,
+        "pass_length": string,
+        "pass_location": string,
+        "air_yards": int,
+        "run_location": string,
+        "run_gap": string,
+        "rusher": string,
+        "receiver": string,
+        "offense_formation": string,
+        "offense_personnel": string,
+        "route": string,
+        "involved_player_position": string
 
-- If run:
-- Formation
-- Personnel
-- Run gap
-- Run direction
-
-- If pass:
-- Formation
-- Personnel
-- Route
-- Receiver
-- Air yards
 '''
 
 import pandas as pd
@@ -382,14 +380,14 @@ def visualize_play(play_data):
         start_pos = (0, -1) 
         plot_label = 'Unknown Play'
 
-    print("\n" + "="*30)
+    #print("\n" + "="*30)
     #print(f"{game_id} / {play_id}")
     print(f"  > Situation: {down_str} | {yardline_str}")
     print(f"  > Formation: {formation}")
     print(f"  > Personnel: {personnel}")
     print(f"  > Play Type: {play_type}")
     print(f"  > Involved: {player_name} ({position})")
-    print("="*30 + "\n")
+    #print("="*30 + "\n")
 
     fig, ax = plt.subplots(figsize=(7, 10))
     fig.patch.set_facecolor('#F0F0F0') 
@@ -469,30 +467,40 @@ def visualize_play(play_data):
 
 if __name__ == "__main__":
 
+# test pass play
     pass_play_input = {
-        #"play_id": 653,
-        #"game_id": "2020_01_ARI_SF",
         "yardline_100": 25,
         "down": 1,
         "ydstogo": 10,
-        "yards_gained": 8,
         "pass_length": "short",
         "pass_location": "left",
         "air_yards": 8,
-        #"yards_after_catch": 0,
         "run_location": None,
         "run_gap": None,
-        "epa": 0.75,
-        "pass_attempt": 1,
-        "touchdown": 0,
-        "complete_pass": 1,
         "rusher": None,
         "receiver": "D.Hopkins",
         "offense_formation": "SHOTGUN",
         "offense_personnel": "1 RB, 1 TE, 3 WR",
         "route": "OUT",
-        #"defense_coverage_type": "MAN",
         "involved_player_position": "WR"
     }
 
-    visualize_play(pass_play_input)
+# test run play
+    run_play_input = {
+        "yardline_100": 40,
+        "down": 2,
+        "ydstogo": 6,
+        "pass_length": None,
+        "pass_location": None,
+        "air_yards": None,
+        "run_location": "right",
+        "run_gap": "tackle",
+        "rusher": "D.Cook",
+        "receiver": None,
+        "offense_formation": "I_FORM",
+        "offense_personnel": "2 RB, 2 TE, 1 WR",
+        "route": None,
+        "involved_player_position": "RB"
+    }
+
+    visualize_play(run_play_input)
