@@ -2,8 +2,16 @@
     Test cases only
 '''
 
+# import io
+# import base64
+# import matplotlib
+# matplotlib.use('Agg')  # Use non-interactive backend for server
+# import matplotlib.pyplot as plt
+
+
 from pbp_situation_model import train_pbp_model, predict_play
 from run_model import train_run_models, predict_run_metrics
+from routeDrawer.playDraw import visualize_play
 
 
 if __name__ == "__main__":
@@ -44,9 +52,39 @@ if __name__ == "__main__":
 
         if prediction == 'run':
             run_prediction = predict_run_metrics(test_case, all_run_models)
+            run_gap = run_prediction['run_gap']
+            run_location = run_prediction['run_location']
+            offense_formation = run_prediction['offense_formation']
+            personnel_off = run_prediction['personnel_off']
 
-            print(f"Run Prediction: {run_prediction}")
+            print(f"Suggested Run Play Metrics")
+            print(f"Run Gap: {run_gap}")
+            print(f"Run Location: {run_location}")
+            print(f"Offense Formation: {offense_formation}")
+            print(f"Personnel Offense: {personnel_off}")
 
+            # Modify the offense personnel to get only the RBs, WRs, and TEs when visualizing the play
+            personnel_rb_wr_te = ', '.join([part for part in personnel_off.split(', ') if any(pos in part for pos in ['RB', 'WR', 'TE'])])
+            print(f"Personnel (RB/WR/TE only): {personnel_rb_wr_te}")
+
+            run_play_input = {
+                "yardline_100": test_case[2],
+                "down": test_case[0],
+                "ydstogo": test_case[1],
+                "pass_length": None,
+                "pass_location": None, 
+                "air_yards": None, 
+                "run_location": run_location,
+                "run_gap": run_gap,
+                "rusher": 'N/A', 
+                "receiver": None, 
+                "offense_formation": offense_formation,
+                "offense_personnel": personnel_rb_wr_te,
+                "route": None,
+                "involved_player_position": "RB"
+            }
+
+            visualize_play(run_play_input)
 
         
     

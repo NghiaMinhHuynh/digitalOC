@@ -465,9 +465,12 @@ def visualize_play(play_data):
     
     plt.show()
 
+    # Save the visualization as a image that can be sent to the frontend
+    
+
 if __name__ == "__main__":
 
-# test pass play
+    # test pass play
     pass_play_input = {
         "yardline_100": 25,
         "down": 1,
@@ -485,7 +488,7 @@ if __name__ == "__main__":
         "involved_player_position": "WR"
     }
 
-# test run play
+    # test run play
     run_play_input = {
         "yardline_100": 40,
         "down": 2,
