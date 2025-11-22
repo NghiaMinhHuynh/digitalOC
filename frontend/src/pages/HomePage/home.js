@@ -1,18 +1,27 @@
 import React, {useRef, useEffect, useState} from 'react';
+import './home.css';
 
 const Home = () => {
     return (
-        <div style={{ textAlign: 'center', color: 'white', paddingTop: '20vh' }}>
-            <h1>Welcome to DigitalOC</h1>
-            <h4>
-                An app that uses play-by-play data and team playcalling tendencies to train an ML model
-                that suggests the most optimal offensive play in any NFL game situation.
-            </h4>
-
-            <button onClick={() => {
+        <div className="home-container">
+            {/* Logo in upper left corner */}
+            <img src="/logo-icon.png" alt="DigitalOC Icon" className="logo-icon" />
+            
+            {/* Main content */}
+            <div className="content-wrapper">
+                <h1 className="title">
+                    <span className="title-digital">DIGITAL</span>
+                    <span className="title-oc">OC</span>
+                </h1>
+                
+                <p className="subtitle">Revolutionizing NFL playcalling</p>
+            </div>
+            
+            {/* Begin button */}
+            <button className="begin-button" onClick={() => {
                 window.location.href = '/situation';
             }}>
-                Start
+                BEGIN
             </button>
         </div>
     );
