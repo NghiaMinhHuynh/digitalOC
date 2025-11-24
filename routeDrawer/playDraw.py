@@ -464,12 +464,9 @@ def visualize_play(play_data):
     ax.legend(handles=handles, labels=labels, loc='lower left')
     
     plt.show()
-
-    # Save the visualization as a image that can be sent to the frontend
     
-
+    
 if __name__ == "__main__":
-
     # test pass play
     pass_play_input = {
         "yardline_100": 25,
