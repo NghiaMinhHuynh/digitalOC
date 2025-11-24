@@ -1,5 +1,5 @@
 '''
-Currently uses a dict as input
+Currently uses a dict as input  
 
 input dictionary:
         "yardline_100": int,
@@ -10,8 +10,6 @@ input dictionary:
         "air_yards": int,
         "run_location": string,
         "run_gap": string,
-        "rusher": string,
-        "receiver": string,
         "offense_formation": string,
         "offense_personnel": string,
         "route": string,
@@ -342,18 +340,20 @@ def visualize_play(play_data):
     yardline_str = f"{int(yardline_100) if yardline_100 else '?'} yds to EZ"
     
     play_type = ''
-    player_name = ''
+    #player_name = ''
     plot_label = ''
     path_info_str = ''
     path = []
     
     # Check if it's a pass play (based on receiver presence)
-    receiver = play_data.get('receiver')
-    rusher = play_data.get('rusher')
+    #receiver = play_data.get('receiver')
+    #rusher = play_data.get('rusher')
+    route  =play_data.get('route')
+    run_gap = play_data.get('run_gap')
     
-    if pd.notna(receiver):
+    if pd.notna(route):
         play_type = 'pass'
-        player_name = receiver
+        #player_name = receiver
         route = play_data.get('route')
         location = play_data.get('pass_location') 
         air_yards = get_num('air_yards')    
@@ -364,9 +364,9 @@ def visualize_play(play_data):
         path = get_route_path(route, start_pos, position, location, air_yards)
         
     # Check if it's a run play
-    elif pd.notna(rusher):
+    elif pd.notna(run_gap):
         play_type = 'run'
-        player_name = rusher
+        #player_name = rusher
         location = play_data.get('run_location') 
         run_gap = play_data.get('run_gap')
         plot_label = f'Rusher ({position})'
@@ -386,7 +386,7 @@ def visualize_play(play_data):
     print(f"  > Formation: {formation}")
     print(f"  > Personnel: {personnel}")
     print(f"  > Play Type: {play_type}")
-    print(f"  > Involved: {player_name} ({position})")
+    #print(f"  > Involved: {player_name} ({position})")
     #print("="*30 + "\n")
 
     fig, ax = plt.subplots(figsize=(7, 10))
@@ -445,7 +445,7 @@ def visualize_play(play_data):
     title_text = (
         #f"Game: {game_id} | Play: {play_id}\n"
         f"{down_str} | {yardline_str}\n" 
-        f"Player: {player_name}\n"
+        #f"Player: {player_name}\n"
         f"Position: {position} | {path_info_str}\n" 
         f"Formation: {formation} | Personnel: {personnel}"
     )
@@ -484,7 +484,7 @@ if __name__ == "__main__":
         "receiver": "D.Hopkins",
         "offense_formation": "SHOTGUN",
         "offense_personnel": "1 RB, 1 TE, 3 WR",
-        "route": "OUT",
+        "route": "IN",
         "involved_player_position": "WR"
     }
 
@@ -506,4 +506,4 @@ if __name__ == "__main__":
         "involved_player_position": "RB"
     }
 
-    visualize_play(run_play_input)
+    visualize_play(pass_play_input)
