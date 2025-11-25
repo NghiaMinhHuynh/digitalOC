@@ -20,54 +20,48 @@ pass_feature_columns = None
 
 
 def load_all_models():
-    """Train and save all models on application startup."""
+    """Train all models on application startup."""
     global pbp_model, pbp_feature_columns, run_models, pass_model, pass_feature_columns
     
     print("=" * 60)
-    print("Training and saving models on Flask app startup...")
+    print("Training models on Flask app startup...")
     print("=" * 60)
     print()
     
-    # Train and save PBP model
+    # Train PBP model
     print("1. Training PBP (Play-by-Play) model...")
     print("-" * 60)
     try:
         pbp_model, pbp_feature_columns = train_pbp_model()
-        from model_utils import save_pbp_model
-        save_pbp_model(pbp_model, pbp_feature_columns)
-        print("✓ PBP model trained and saved successfully")
+        print("✓ PBP model trained successfully")
     except Exception as e:
-        print(f"✗ Error training/saving PBP model: {e}")
+        print(f"✗ Error training PBP model: {e}")
         raise
     print()
     
-    # Train and save Run models
+    # Train Run models
     print("2. Training Run models...")
     print("-" * 60)
     try:
         run_models = train_run_models()
         if run_models:
-            from model_utils import save_run_models
-            save_run_models(run_models)
-            print("✓ Run models trained and saved successfully")
+            print("✓ Run models trained successfully")
         else:
             print("✗ Run model training returned empty dictionary")
     except Exception as e:
-        print(f"✗ Error training/saving Run models: {e}")
+        print(f"✗ Error training Run models: {e}")
         raise
     print()
     
-    # Train and save Pass model
+    # Train Pass model
     print("3. Training Pass model...")
     print("-" * 60)
     try:
         from pass_model import train_pass_model
         pass_model, pass_feature_columns, df_pass_processed = train_pass_model()
-        from model_utils import save_pass_model
-        save_pass_model(pass_model, pass_feature_columns)
-        print("✓ Pass model trained and saved successfully")
+        print("✓ Pass model trained successfully")
     except Exception as e:
-        print(f"✗ Error training/saving Pass model: {e}")
+        print(f"✗ Error training Pass model: {e}")
         # Don't raise for pass model since it's optional
     print()
     
@@ -77,7 +71,7 @@ def load_all_models():
     print()
 
 
-# Train and save all models when the application starts
+# Train all models when the application starts
 load_all_models() 
 
 
