@@ -1,4 +1,5 @@
 import React, {useRef, useEffect, useState} from 'react';
+import { useNavigate } from 'react-router-dom';
 import TeamDropdownMenu from '../../components/team_dropdown';
 import './situation.css';
 
@@ -37,6 +38,7 @@ import TENLogo from '../../logos/TEN.png';
 import WASLogo from '../../logos/WAS.png';
 
 const Situation = () => {
+    const navigate = useNavigate();
     
     // Team attributes
     const [offenseTeam, setOffenseTeam] = useState("");
@@ -64,7 +66,7 @@ const Situation = () => {
 
     // Timeout attributes
     const [offenseTimeouts, setOffenseTimeouts] = useState(""); 
-    const [defenseTimeouts, setDefenseTimeouts] = useState(""); 
+    const [defenseTimeouts, setDefenseTimeouts] = useState("");
     
     // Team data with logos
     const teams = [
@@ -124,6 +126,20 @@ const Situation = () => {
         setShowTeamSelector(false);
     };
     
+    // Calculate ball marker position (0-100%) based on field position
+    const calculateBallPosition = () => {
+        if (ownOppMidfield === 'midfield') {
+            return 50; // Center of field
+        } else if (ownOppMidfield === 'own' && ydLine50) {
+            // Own territory: own 1 = 1%, own 49 = 49%
+            return parseInt(ydLine50);
+        } else if (ownOppMidfield === 'opp' && ydLine50) {
+            // Opponent territory: opp 49 = 51%, opp 1 = 99%
+            return 100 - parseInt(ydLine50);
+        }
+        return 50; // Default to center
+    };
+    
     async function calculateQtrSeconds(minutes, seconds) {
         seconds = parseInt(seconds);
         minutes = parseInt(minutes);
@@ -181,7 +197,25 @@ const Situation = () => {
         const situationArray = `${down}, ${ydsToGo}, ${ydLine100}, ${goalToGo}, ${qtrSeconds}, ${halfSeconds}, ${gameSeconds}, ${scoreDiff}, ${offenseTimeouts}, ${defenseTimeouts}, ${offenseTeam}, ${defenseTeam}`;
         console.log(`Situation Array: ${situationArray}`);
 
-        // Will eventually build a fetch call here
+        // Navigate to result page with situation data
+        navigate('/result', { 
+            state: { 
+                situationArray,
+                offenseTeam,
+                defenseTeam,
+                down,
+                ydsToGo,
+                ownOppMidfield,
+                ydLine50,
+                offensePoints,
+                defensePoints,
+                quarter,
+                minutes,
+                seconds,
+                offenseTimeouts,
+                defenseTimeouts
+            } 
+        });
 
         return; 
     }   
@@ -233,26 +267,24 @@ const Situation = () => {
                         />
                     </div>
                     
-                    {/* Timeout Indicators */}
+                    {/* Timeout Buttons */}
                     <div className="timeout-indicators">
-                        <div className={`timeout-dot ${parseInt(offenseTimeouts) >= 1 ? '' : 'inactive'}`}></div>
-                        <div className={`timeout-dot ${parseInt(offenseTimeouts) >= 2 ? '' : 'inactive'}`}></div>
-                        <div className={`timeout-dot ${parseInt(offenseTimeouts) >= 3 ? '' : 'inactive'}`}></div>
+                        <div 
+                            className={`timeout-dot ${parseInt(offenseTimeouts) >= 1 ? '' : 'inactive'}`}
+                            onClick={() => setOffenseTimeouts(parseInt(offenseTimeouts) === 1 ? '0' : '1')}
+                            style={{ cursor: 'pointer' }}
+                        ></div>
+                        <div 
+                            className={`timeout-dot ${parseInt(offenseTimeouts) >= 2 ? '' : 'inactive'}`}
+                            onClick={() => setOffenseTimeouts(parseInt(offenseTimeouts) === 2 ? '1' : '2')}
+                            style={{ cursor: 'pointer' }}
+                        ></div>
+                        <div 
+                            className={`timeout-dot ${parseInt(offenseTimeouts) >= 3 ? '' : 'inactive'}`}
+                            onClick={() => setOffenseTimeouts(parseInt(offenseTimeouts) === 3 ? '2' : '3')}
+                            style={{ cursor: 'pointer' }}
+                        ></div>
                     </div>
-                    
-                    {/* Hidden timeout selector */}
-                    <select
-                        value={offenseTimeouts}
-                        onChange={(e) => setOffenseTimeouts(e.target.value)}
-                        style={{ position: 'absolute', opacity: 0, pointerEvents: 'auto', marginTop: '-40px', marginLeft: '50px', width: '200px', height: '40px' }}
-                        title="Select offense timeouts"
-                    >
-                        <option value="">-</option>
-                        <option value="0">0</option>
-                        <option value="1">1</option>
-                        <option value="2">2</option>
-                        <option value="3">3</option>
-                    </select>
                 </div>
 
                 {/* TEAMS Card */}
@@ -261,7 +293,7 @@ const Situation = () => {
                     
                     {/* Down & Yards to Go */}
                     <div className="situation-row">
-                        <span className="situation-label">DOWN</span>
+                        <span className="situation-label" style={{ fontSize: '25px', margin: '0 10px' }}>DOWN</span>
                         <select
                             className="situation-input"
                             value={down}
@@ -275,9 +307,9 @@ const Situation = () => {
                             <option value="4">4</option>
                         </select>
                         
-                        <span className="situation-label" style={{ fontSize: '48px', margin: '0 20px' }}>&</span>
+                        <span className="situation-label" style={{ fontSize: '35px', margin: '0 20px' }}>&</span>
                         
-                        <span className="situation-label">YDS TO GO</span>
+                        <span className="situation-label"  style={{ fontSize: '25px', margin: '0 10px' }}>YDS TO GO</span>
                         <input
                             type="number"
                             className="situation-input"
@@ -296,7 +328,7 @@ const Situation = () => {
                     
                     {/* Quarter & Time */}
                     <div className="situation-row">
-                        <span className="situation-label">QTR</span>
+                        <span className="situation-label" style={{ fontSize: '25px', margin: '0 10px' }} >QTR</span>
                         <select
                             className="situation-input"
                             value={quarter}
@@ -336,7 +368,7 @@ const Situation = () => {
                                 className="situation-input"
                                 min="0"
                                 max="59"
-                                value={seconds !== undefined && seconds !== '' ? String(seconds).padStart(2, '0') : ''}
+                                value={seconds === '' || seconds === undefined ? '' : seconds}
                                 onChange={(e) => {
                                     const value = parseInt(e.target.value);
                                     if (parseInt(minutes) === 15) {
@@ -397,26 +429,24 @@ const Situation = () => {
                         />
                     </div>
                     
-                    {/* Timeout Indicators */}
+                    {/* Timeout Buttons */}
                     <div className="timeout-indicators">
-                        <div className={`timeout-dot ${parseInt(defenseTimeouts) >= 1 ? '' : 'inactive'}`}></div>
-                        <div className={`timeout-dot ${parseInt(defenseTimeouts) >= 2 ? '' : 'inactive'}`}></div>
-                        <div className={`timeout-dot ${parseInt(defenseTimeouts) >= 3 ? '' : 'inactive'}`}></div>
+                        <div 
+                            className={`timeout-dot ${parseInt(defenseTimeouts) >= 1 ? '' : 'inactive'}`}
+                            onClick={() => setDefenseTimeouts(parseInt(defenseTimeouts) === 1 ? '0' : '1')}
+                            style={{ cursor: 'pointer' }}
+                        ></div>
+                        <div 
+                            className={`timeout-dot ${parseInt(defenseTimeouts) >= 2 ? '' : 'inactive'}`}
+                            onClick={() => setDefenseTimeouts(parseInt(defenseTimeouts) === 2 ? '1' : '2')}
+                            style={{ cursor: 'pointer' }}
+                        ></div>
+                        <div 
+                            className={`timeout-dot ${parseInt(defenseTimeouts) >= 3 ? '' : 'inactive'}`}
+                            onClick={() => setDefenseTimeouts(parseInt(defenseTimeouts) === 3 ? '2' : '3')}
+                            style={{ cursor: 'pointer' }}
+                        ></div>
                     </div>
-                    
-                    {/* Hidden timeout selector */}
-                    <select
-                        value={defenseTimeouts}
-                        onChange={(e) => setDefenseTimeouts(e.target.value)}
-                        style={{ position: 'absolute', opacity: 0, pointerEvents: 'auto', marginTop: '-40px', marginLeft: '50px', width: '200px', height: '40px' }}
-                        title="Select defense timeouts"
-                    >
-                        <option value="">-</option>
-                        <option value="0">0</option>
-                        <option value="1">1</option>
-                        <option value="2">2</option>
-                        <option value="3">3</option>
-                    </select>
                 </div>
             </div>
 
@@ -437,16 +467,27 @@ const Situation = () => {
                         <span>0</span>
                     </div>
                     <div className="field-marker">
-                        <div className="ball-marker"></div>
+                        <div 
+                            className="ball-marker"
+                            style={{ 
+                                left: `${calculateBallPosition()}%`, 
+                                transform: 'translateX(-50%)',
+                                position: 'absolute'
+                            }}
+                        ></div>
                     </div>
-                    <div className="scroll-text">scroll</div>
                 </div>
                 <div className="yard-line-display">
                     {/* Territory selector */}
                     <select
                         className="situation-input"
                         value={ownOppMidfield}
-                        onChange={(e) => setOwnOppMidfield(e.target.value)}
+                        onChange={(e) => {
+                            setOwnOppMidfield(e.target.value);
+                            if (e.target.value === 'midfield') {
+                                setYdLine50('50');
+                            }
+                        }}
                         style={{ width: 'auto', minWidth: '100px', marginRight: '10px' }}
                     >
                         <option value="">-</option>
@@ -456,27 +497,25 @@ const Situation = () => {
                     </select>
                     
                     {/* Yard line input */}
-                    {ownOppMidfield !== 'midfield' && (
-                        <input
-                            type="number"
-                            className="situation-input"
-                            min="1"
-                            max="49"
-                            value={ydLine50 || ''}
-                            onChange={(e) => {
-                                const value = parseInt(e.target.value);
-                                if ((value >= 1 && value <= 49) || e.target.value === '') {
-                                    setYdLine50(e.target.value);
-                                }
-                            }}
-                            placeholder="20"
-                            style={{ width: '100px' }}
-                        />
-                    )}
-                    
-                    {ownOppMidfield === 'midfield' && (
-                        <span>50</span>
-                    )}
+                    <input
+                        type="number"
+                        className="situation-input"
+                        min="1"
+                        max="50"
+                        value={ydLine50 || ''}
+                        onChange={(e) => {
+                            const value = parseInt(e.target.value);
+                            if (value === 50) {
+                                setOwnOppMidfield('midfield');
+                                setYdLine50('50');
+                            } else if ((value >= 1 && value <= 49) || e.target.value === '') {
+                                setYdLine50(e.target.value);
+                            }
+                        }}
+                        placeholder="20"
+                        style={{ width: '100px' }}
+                        disabled={ownOppMidfield === 'midfield'}
+                    />
                 </div>
             </div>
 
