@@ -1,4 +1,4 @@
-import React, {useRef, useEffect, useState} from 'react';
+import React, {useState} from 'react';
 import { useNavigate } from 'react-router-dom';
 import TeamDropdownMenu from '../../components/team_dropdown';
 import './situation.css';
@@ -157,7 +157,7 @@ const Situation = () => {
                 const b = parseInt(hex.slice(5, 7), 16);
                 return `rgba(${r}, ${g}, ${b}, ${opacity})`;
             };
-            return `linear-gradient(135deg, ${hexToRgba(colors.primary, 0.5)} 48%, ${hexToRgba(colors.secondary, 0.44)} 100%)`;
+            return `linear-gradient(135deg, ${hexToRgba(colors.primary, 0.5)} 38%, ${hexToRgba(colors.secondary, 0.44)} 100%)`;
         }
         return 'rgba(20, 30, 60, 0.8)'; // Default background
     };
@@ -174,7 +174,7 @@ const Situation = () => {
                     const b = parseInt(hex.slice(5, 7), 16);
                     return `rgba(${r}, ${g}, ${b}, ${opacity})`;
                 };
-                return `linear-gradient(135deg, ${hexToRgba(offenseColor, 0.5)} 32%, ${hexToRgba(defenseColor, 0.5)} 100%)`;
+                return `linear-gradient(90deg, ${hexToRgba(offenseColor, 0.5)}, ${hexToRgba(defenseColor, 0.5)})`;
             }
         }
         return 'rgba(40, 30, 70, 0.9)'; // Default background
@@ -495,7 +495,7 @@ const Situation = () => {
                                 }
                             }}
                             placeholder="10"
-                            style={{ fontSize: '72px', width: '120px', color: '#ff69ff' }}
+                            style={{ fontSize: '72px', width: '120px', color: '#fcf8f9' }}
                         />
                     </div>
                     
@@ -522,7 +522,16 @@ const Situation = () => {
 
             {/* Field Container */}
             <div className="field-container">
-                <div className="field">
+                <h2 className="card-title" style={{ marginBottom: '10px' }}>FIELD POSITION</h2>
+                <div className="field" style={{
+                    background: `linear-gradient(90deg, 
+                        ${offenseTeam ? teamColors[offenseTeam]?.primary + '40' : 'rgba(90, 143, 58, 0.3)'} 0%, 
+                        ${offenseTeam ? teamColors[offenseTeam]?.primary + '40' : 'rgba(90, 143, 58, 0.3)'} 10%, 
+                        #5a8f3a 10%, 
+                        #4a7f2a 90%, 
+                        ${defenseTeam ? teamColors[defenseTeam]?.primary + '40' : 'rgba(74, 127, 42, 0.3)'} 90%, 
+                        ${defenseTeam ? teamColors[defenseTeam]?.primary + '40' : 'rgba(74, 127, 42, 0.3)'} 100%)`
+                }}>
                     <div className="field-lines">
                         <span>0</span>
                         <span>10</span>
@@ -558,7 +567,7 @@ const Situation = () => {
                                 setYdLine50('50');
                             }
                         }}
-                        style={{ width: 'auto', minWidth: '100px', marginRight: '10px' }}
+                        style={{ width: 'auto', minWidth: '100px' }}
                     >
                         <option value="">-</option>
                         <option value="own">OWN</option>
@@ -593,6 +602,23 @@ const Situation = () => {
             <button className="submit-button" onClick={submitSituation}>
                 Submit Situation
             </button>
+
+            {/* Tip Message */}
+            <div style={{
+                position: 'fixed',
+                bottom: '15px',
+                right: '15px',
+                color: 'rgba(255, 255, 255, 0.6)',
+                fontSize: '12px',
+                fontStyle: 'italic',
+                textAlign: 'right',
+                padding: '8px 12px',
+                background: 'rgba(20, 30, 60, 0.7)',
+                borderRadius: '8px',
+                border: '1px solid rgba(255, 255, 255, 0.3)'
+            }}>
+                Tip: use up/down arrows and tab for a smoother experience
+            </div>
 
             {/* Team Selector Modal */}
             {showTeamSelector && (
