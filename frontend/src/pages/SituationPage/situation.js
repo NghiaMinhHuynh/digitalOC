@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useEffect, useState} from 'react';
 import { useNavigate } from 'react-router-dom';
 import TeamDropdownMenu from '../../components/team_dropdown';
 import './situation.css';
@@ -67,6 +67,9 @@ const Situation = () => {
     // Timeout attributes
     const [offenseTimeouts, setOffenseTimeouts] = useState(""); 
     const [defenseTimeouts, setDefenseTimeouts] = useState("");
+
+    // Cycling tips state
+    const [currentTipIndex, setCurrentTipIndex] = useState(0);
     
     // Team data with logos
     const teams = [
@@ -179,6 +182,21 @@ const Situation = () => {
         }
         return 'rgba(40, 30, 70, 0.9)'; // Default background
     };
+
+    // Tips array
+    const tips = [
+        "Tip: use up/down arrows and tab for a smoother experience!",
+        "Tip: make sure to update the timeouts located under the score!"
+    ];
+
+    // Cycle tips every 5 seconds
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setCurrentTipIndex((prevIndex) => (prevIndex + 1) % tips.length);
+        }, 5000);
+
+        return () => clearInterval(interval);
+    }, [tips.length]);
     
     // Open team selector
     const openTeamSelector = (type) => {
@@ -236,8 +254,12 @@ const Situation = () => {
     }
 
     async function submitSituation() {
+        // Default timeouts to 0 if not selected
+        const finalOffenseTimeouts = offenseTimeouts || '0';
+        const finalDefenseTimeouts = defenseTimeouts || '0';
+        
         // Ensure no required fields are left blank
-        if (!offenseTeam || !defenseTeam || !down || !ydsToGo || !ownOppMidfield || (ownOppMidfield !== 'midfield' && !ydLine50) || !offensePoints || !defensePoints || !quarter || !minutes || !seconds || !offenseTimeouts || !defenseTimeouts) {
+        if (!offenseTeam || !defenseTeam || !down || !ydsToGo || !ownOppMidfield || (ownOppMidfield !== 'midfield' && !ydLine50) || !offensePoints || !defensePoints || !quarter || !minutes || !seconds) {
             alert("Please fill out all required fields before submitting the situation.");
             return;
         }
@@ -253,7 +275,7 @@ const Situation = () => {
         console.log(`${down}${down === '1' ? 'st' : down === '2' ? 'nd' : down === '3' ? 'rd' : 'th'} & ${ydsToGo} from ${ownOppMidfield} ${ownOppMidfield !== 'midfield' ? ydLine50 : ''}`);
         console.log(`Score (offense - defense) is ${offensePoints} - ${defensePoints}`);
         console.log(`Timestamp: ${quarter}${quarter === '1' ? 'st' : quarter === '2' ? 'nd' : quarter === '3' ? 'rd' : quarter === '4' ? 'th' : ''} at ${minutes}:${seconds}`);
-        console.log(`Timeouts remaining: Offense ${offenseTimeouts}, Defense ${defenseTimeouts}`);
+        console.log(`Timeouts remaining: Offense ${finalOffenseTimeouts}, Defense ${finalDefenseTimeouts}`);
         
         // Calculate necessary values for the situation array as needed by the backend model
         const ydLine100 = (ownOppMidfield === "own" ? 100 - parseInt(ydLine50) : ownOppMidfield === "midfield" ? 50 : ownOppMidfield === "opp" ? parseInt(ydLine50) : undefined);
@@ -264,7 +286,7 @@ const Situation = () => {
         const gameSeconds = await calculateGameSeconds(quarter, minutes, seconds);
 
         // Situation array that will be used to call the backend and PBP model
-        const situationArray = `${down}, ${ydsToGo}, ${ydLine100}, ${goalToGo}, ${qtrSeconds}, ${halfSeconds}, ${gameSeconds}, ${scoreDiff}, ${offenseTimeouts}, ${defenseTimeouts}, ${offenseTeam}, ${defenseTeam}`;
+        const situationArray = `${down}, ${ydsToGo}, ${ydLine100}, ${goalToGo}, ${qtrSeconds}, ${halfSeconds}, ${gameSeconds}, ${scoreDiff}, ${finalOffenseTimeouts}, ${finalDefenseTimeouts}, ${offenseTeam}, ${defenseTeam}`;
         console.log(`Situation Array: ${situationArray}`);
 
         // Navigate to result page with situation data
@@ -282,8 +304,8 @@ const Situation = () => {
                 quarter,
                 minutes,
                 seconds,
-                offenseTimeouts,
-                defenseTimeouts
+                offenseTimeouts: finalOffenseTimeouts,
+                defenseTimeouts: finalDefenseTimeouts
             } 
         });
 
@@ -617,7 +639,7 @@ const Situation = () => {
                 borderRadius: '8px',
                 border: '1px solid rgba(255, 255, 255, 0.3)'
             }}>
-                Tip: use up/down arrows and tab for a smoother experience
+                {tips[currentTipIndex]}
             </div>
 
             {/* Team Selector Modal */}
