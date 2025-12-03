@@ -141,17 +141,22 @@
 }
 
 .field-container {
-    max-width: 500px;
-    margin: 40px auto;
+    max-width: 650px;
+    margin: 25px auto;
     text-align: center;
+    background: rgba(20, 30, 60, 0.8);
+    border: 3px solid white;
+    border-radius: 20px;
+    padding: 0px 20px 20px 20px;
 }
 
 .field {
     background: linear-gradient(180deg, #5a8f3a 0%, #4a7f2a 100%);
-    border-radius: 20px;
-    padding: 30px 20px;
+    border-radius: 15px;
+    padding: 10px 20px;
     position: relative;
-    overflow: hidden;
+    overflow: visible;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
 }
 
 .field-lines {
@@ -160,16 +165,23 @@
     font-size: 17px;
     font-weight: bold;
     color: white;
-    margin-bottom: 20px;
+    margin-bottom: 5px;
     padding: 0 10px;
+    position: relative;
+    z-index: 2;
+}
+
+.field-lines span {
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
 }
 
 .field-marker {
     position: relative;
-    height: 60px;
+    height: 40px;
     display: flex;
     align-items: center;
     justify-content: center;
+    z-index: 3;
 }
 
 .ball-marker {
@@ -188,16 +200,20 @@
 }
 
 .yard-line-display {
-    font-size: 48px;
-    font-weight: bold;
-    color: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 15px;
     margin-top: 10px;
-    letter-spacing: 3px;
+    background: rgba(60, 40, 90, 0.8);
+    border: 2px solid white;
+    border-radius: 15px;
+    padding: 10px 10px;
 }
 
 .submit-button {
     display: block;
-    margin: 40px auto;
+    margin: 30px auto;
     padding: 20px 80px;
     background: linear-gradient(135deg, #ff69ff 0%, #d946ff 100%);
     border: none;
