@@ -1,4 +1,4 @@
-import React, {useEffect} from 'react';
+import React, {useEffect, useState} from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import './result.css';
 
@@ -6,7 +6,7 @@ const Result = () => {
     const location = useLocation();
     const navigate = useNavigate();
     const situationData = location.state;
-    const [visualizationImage, setVisualizationImage] = React.useState(null);
+    const [visualizationImage, setVisualizationImage] = useState(null);
 
     useEffect(() => {
         console.log("Received situation data:", situationData);
