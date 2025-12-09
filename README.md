@@ -1,10 +1,10 @@
-# digitalOC
+# DigitalOC
 
 An intelligent NFL play-calling assistant that leverages machine learning and real play-by-play data to recommend optimal offensive plays for any game situation.
 
 ## 🏈 Overview
 
-digitalOC is a full-stack web application that combines NFL play-by-play data, team Elo ratings, and Next Gen Stats to power ML models that predict the best offensive strategy. The app features an interactive React frontend where users can input game situations and receive AI-driven play recommendations with visual play diagrams.
+DigitalOC is a full-stack web application that combines NFL play-by-play data, team Elo ratings, and Next Gen Stats to power ML models that predict the best offensive strategy. The app features an interactive React frontend where users can input game situations and receive AI-driven play recommendations with visual play diagrams.
 
 ## ✨ Features
 
