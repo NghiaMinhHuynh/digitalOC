@@ -5,6 +5,9 @@ from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, classification_report
+import joblib
+import json
+from pathlib import Path
 from TeamElo import PlayClassifier, team_elos
 
 
@@ -74,13 +77,19 @@ def train_pbp_model():
     print("\nClassification Report:")
     print(classification_report(y_test_clean, y_pred))
     print()
-    
-    # Return the trained model for later use
-    return model, X_train_clean.columns.tolist()  # Also return column names for later predictions
+
+    # Return the model, feature columns and accuracy
+    return model, X_train_clean, accuracy 
 
 
-def predict_play(situation, trained_model, feature_columns):
+def predict_play(situation, trained_model):
     ''' Use the situation to determine the most optimal play type '''
+    
+    # Load feature columns from metadata file
+    meta_path = Path("models") / "pbp_situation_model_meta.json"
+    with open(meta_path, 'r') as f:
+        metadata = json.load(f)
+    feature_columns = metadata["feature_columns"]
 
     # Print the current situation
     print(f"Down: {situation[0]}")
@@ -127,3 +136,28 @@ def predict_play(situation, trained_model, feature_columns):
     # Return prediction and confidence
     return prediction[0], prediction_proba[0]  
 
+  
+if __name__ == "__main__": 
+    # Train the PBP situation model when running this file separately
+    model, X_train_clean, accuracy = train_pbp_model()
+
+    # Save the model and feature columns to the models directory
+    model_dir = Path("models")
+    model_dir.mkdir(exist_ok=True)
+    
+    # Save the trained model using joblib
+    model_path = model_dir / "pbp_situation_model.joblib"
+    joblib.dump(model, model_path)
+    print(f"Model saved to {model_path}")
+    
+    # Save feature columns as JSON metadata
+    feature_columns = X_train_clean.columns.tolist()
+    metadata = {
+        "feature_columns": feature_columns,
+        "accuracy": float(accuracy),
+        "model_type": "RandomForestClassifier"
+    }
+    meta_path = model_dir / "pbp_situation_model_meta.json"
+    with open(meta_path, 'w') as f:
+        json.dump(metadata, f, indent=2)
+    print(f"Metadata saved to {meta_path}")
