@@ -12,6 +12,9 @@ from sklearn.metrics import accuracy_score, classification_report
 from parse_personnel import add_personnel_features
 from add_participation_features import add_participation_features
 
+import joblib
+from pathlib import Path
+
 
 def train_run_models() -> Dict[str, Dict[str, Any]]:
     """
@@ -436,8 +439,16 @@ def predict_run_metrics(situation, trained_models):
 
 
 if __name__ == "__main__":
+    # Train the Run models when running this file separately
     print("Starting all run model training")
     all_models: Dict[str, Dict[str, Any]] = train_run_models()
+
+    # Save the trained run models to the models directory
+    model_dir = Path("models")
+    model_dir.mkdir(exist_ok=True)
+    model_path = model_dir / "run_models.joblib"
+    joblib.dump(all_models, model_path)
+    print(f"Run models saved to {model_path}")
 
     if all_models:
         print("\nAll model training complete")

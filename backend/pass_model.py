@@ -318,5 +318,15 @@ def predict_pass_metrics(situation, trained_models):
 
     return predictions
 
+
 if __name__ == "__main__":
-    train_pass_models()
+    # Train the Pass models when running this file separately
+    model = train_pass_models()
+
+    # Save the pass model to the models directory
+    model_dir = Path("models")
+    model_dir.mkdir(exist_ok=True)
+
+    model_path = model_dir / "pass_models.joblib"
+    joblib.dump(model, model_path)
+    print(f"Pass models saved to {model_path}")
