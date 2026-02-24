@@ -62,3 +62,19 @@ changes that need to be made for each concept:
 - Post-Wheel: Wheel is targeted route, but needs to be lined up in the slot
 - Mills: Post is targeted route, complimentary In route should break when Post breaks (In should stop running vertically when Post stops running vertically)
 - Smash: Hitch is targeted route, complimentary corner route needs to run vertically more before breaking.
+
+
+complimentary concepts:
+[targeted concept] [complimentary concept]
+[      float     ] [        Y Cross      ]
+[      FLANK     ] [        Float        ]
+[     Y Cross    ] [        Ghost        ]
+[      Smash     ] [        Dagger       ]
+[      Curls     ] [        Scissors     ]
+[      Ghost     ] [        Mills        ]
+[     Dagger     ] [        Scissors     ]
+[      Slants    ] [        Flank        ]
+[     Scissors   ] [        Slant        ]
+[      Mills     ] [        Smash        ]
+[    Post-Wheel  ] [        Smash        ]
+[      Slant     ] [        Flank        ]
