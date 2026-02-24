@@ -44,8 +44,8 @@ import numpy as np
 # ---------------------------------------------------------------------------
 ROUTE_CONCEPTS = {
     # companion_air: explicit depth for companion; None = derive below per-route
-    'GO':     lambda ay: ('FLOAT',        'OUT',    'inside',  5),                          # short out underneath
-    'FLAT':   lambda ay: ('FLANK',        'SLANT',  'inside',  6),                          # slant ~6 yds
+    'GO':     lambda ay: ('FLOAT',        'OUT',    'inside',  5),                            # short out underneath
+    'FLAT':   lambda ay: ('FLANK',        'SLANT',  'inside',  6),                            # slant ~6 yds
     'CROSS':  lambda ay: ('Y CROSS',      'DIG',    'outside', max((ay or 8), 8)),           # dig at least as deep as cross
     'HITCH':  lambda ay: (
         'CURLS' if (ay or 0) > 8 else 'SMASH',
@@ -625,23 +625,30 @@ def visualize_play(play_data, save_path='play_visualization.png'):
     if current_skill_count < 5:
         personnel_counts['WR'] = personnel_counts.get('WR', 0) + (5 - current_skill_count)
 
+    # Helper to safely deduct a player from the available personnel pool
+    def consume_player(pref_pos):
+        if personnel_counts.get(pref_pos, 0) > 0:
+            personnel_counts[pref_pos] -= 1
+        else:
+            # Fallback: if we ran out of the preferred position, 
+            # flex out another available skill player (WR, TE, or RB)
+            for fallback_pos in ['WR', 'TE', 'RB']:
+                if personnel_counts.get(fallback_pos, 0) > 0:
+                    personnel_counts[fallback_pos] -= 1
+                    break
+
     # Subtract frontside and backside receivers from background count
-    if position in personnel_counts:
-        personnel_counts[position] -= 1
+    if position:
+        consume_player(position)
+        
     if companion_start is not None:
-        if companion_is_te and 'TE' in personnel_counts:
-            personnel_counts['TE'] = max(0, personnel_counts['TE'] - 1)
-        elif 'WR' in personnel_counts:
-            personnel_counts['WR'] = max(0, personnel_counts['WR'] - 1)
-    
-    # Subtract backside receivers
-    if backside_primary_start is not None and 'WR' in personnel_counts:
-        personnel_counts['WR'] = max(0, personnel_counts['WR'] - 1)
+        consume_player('TE' if companion_is_te else 'WR')
+        
+    if backside_primary_start is not None:
+        consume_player('WR')
+        
     if backside_companion_start is not None:
-        if backside_companion_is_te and 'TE' in personnel_counts:
-            personnel_counts['TE'] = max(0, personnel_counts['TE'] - 1)
-        elif 'WR' in personnel_counts:
-            personnel_counts['WR'] = max(0, personnel_counts['WR'] - 1)
+        consume_player('TE' if backside_companion_is_te else 'WR')
 
     occupied_slots = [start_pos]
     if companion_start is not None:
