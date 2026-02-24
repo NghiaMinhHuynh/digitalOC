@@ -1,40 +1,7 @@
-'''
-This model predicts the expected yards gained on a play based on the same situational features as the play type model.
-
-The following feature columns will be used for now: 
-    - Type of play: 
-        - run/pass
-
-    - For running plays: 
-        - run gap
-        - run location
-        - offensive formation
-        - offensive personnel 
-
-    - For passing plays: 
-        - receiver position
-        - route
-        - offensive formation
-        - offensive personnel 
-        - pass location
-        - pass length
-
-    - Additional feature columns required: 
-        - team on offense
-        - team on defense
-        - field position
-        - score differential
-        - game time remaining
-
-Target variable:
-    - Expected yards gained on the play (continuous variable)
-
-'''
-
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
-from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import LinearRegression, Ridge
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_squared_error, r2_score
 import joblib
@@ -44,6 +11,8 @@ from TeamElo import PlayClassifier, team_elos
 
 
 def train_exp_yards_model_run():
+    ''' This regression model predicts expected yardage for running plays '''
+
     # Open both 2024 Play-by-Play CSV files and combine them
     pbp_files = [pd.read_csv("Data/pbp_2024_0.csv"), pd.read_csv("Data/pbp_2024_1.csv")]
     df = pd.concat(pbp_files, ignore_index=True)
@@ -63,23 +32,41 @@ def train_exp_yards_model_run():
     
     # feature columns
     df_filtered["elo_score"] = df_filtered.apply(get_elo, axis=1)
-    X = df_filtered[['run_gap', 'run_location', 'posteam', 'defteam', 'elo_score', 'ydstogo', 'yardline_100', 
+    X = df_filtered[['run_gap', 'run_location', 'posteam', 'defteam', 'elo_score', 'down', 'ydstogo', 'yardline_100', 
                      'goal_to_go', 'quarter_seconds_remaining','half_seconds_remaining', 'game_seconds_remaining', 
                      'score_differential', 'posteam_timeouts_remaining', 'defteam_timeouts_remaining']]
+    df_filtered["is_redzone"] = (df_filtered["yardline_100"] <= 20).astype(int)
+    df_filtered["is_goal_line"] = ((df_filtered["goal_to_go"] == 1) & (df_filtered["yardline_100"] <= 10)).astype(int)
+    df_filtered["is_short_yardage"] = ((df_filtered["ydstogo"] <= 2) & (df_filtered["down"] >= 3)).astype(int)
     print(df_filtered.shape) # roughly 15k rows, 13 feature columns
     print(X.head(10))
 
     # target variable
-    y = df_filtered['yards_gained']
+    y = df_filtered['yards_gained'].clip(-5, 20) # Clip extreme values (reduces noise from breakaway runs/big losses)
     print(y.head(10))
 
-    #NOTE: For offense_formation and offense_personnel, we need to use the pbp_participation_2024.csv file
+    # Intergrate the pbp_participation_file to get offense formation and personnel for each play
+    pbp_participation_file = pd.read_csv("Data/pbp_participation_2024.csv")
+    '''
+        Find the row in the pbp_participation_file where the "nflverse_game_id" and "play_id" match the 
+        row with "game_id" and "play_id" in df_filtered
+    '''
+    def get_participation_info(row):
+        game_id = row["game_id"]
+        play_id = row["play_id"]
+        participation_row = pbp_participation_file[(pbp_participation_file["nflverse_game_id"] == game_id) & 
+                                                  (pbp_participation_file["play_id"] == play_id)]
+        
+        if not participation_row.empty:
+            return participation_row.iloc[0]["offense_formation"], participation_row.iloc[0]["offense_personnel"]
+        else:
+            return np.nan, np.nan
+    df_filtered["offense_formation"], df_filtered["offense_personnel"] = zip(*df_filtered.apply(get_participation_info, axis=1))
 
     # Split the data between X and y
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-    # Handle categorical columns for the X values (non-numeric data)
-    # (E.g. posteam="KC" becomes posteam_KC=1, all other team columns = 0)
+    # One-hot encode categorical columns for the X values (non-numeric data)
     categorical_cols = ['posteam', 'defteam', 'run_gap', 'run_location']
     X_train_encoded = pd.get_dummies(X_train, columns=categorical_cols, drop_first=True) # Using pd.get_dummies (one-hot encoding)
     X_test_encoded = pd.get_dummies(X_test, columns=categorical_cols, drop_first=True)
@@ -100,7 +87,7 @@ def train_exp_yards_model_run():
     print(f"Test data shape after cleaning: {X_test_clean.shape}")
 
     # Train a simple linear regression model
-    model = LinearRegression()
+    model = Ridge(alpha=1.0)
     model.fit(X_train_clean, y_train_clean)
 
     # Predict on test data
@@ -109,12 +96,58 @@ def train_exp_yards_model_run():
     # Calculate metrics
     mse = mean_squared_error(y_test_clean, y_pred)
     r2 = r2_score(y_test_clean, y_pred)
-
     print(f"Mean Squared Error: {mse}")
     print(f"R-squared: {r2}")
 
-    # # Save the model
-    # joblib.dump(model, "Models/exp_yards_model_run.pkl")
+    # Print out the first 10 predicted vs actual values for the test set
+    print("\nPredicted vs Actual values for the first 10 test samples:")
+    for i in range(10):
+        print(f"Predicted: {y_pred[i]:.2f}, Actual: {y_test_clean.iloc[i]}")
+
+    # Save the model
+    model_dir = Path("models")  
+    model_dir.mkdir(exist_ok=True)
+    joblib.dump(model, model_dir / "exp_yards_model_run.joblib")
+    print("Expected yards model for running plays trained and saved successfully.")
+
+
+
+
+
+
+
+
+
+
+
+def predict_exp_yards_run(input_dict):
+    ''' Predict expected yards for a running play '''
+
+    model_dir = Path("models")  
+    model_dir.mkdir(exist_ok=True)
+    model = joblib.load(model_dir / "exp_yards_model_run.joblib")
+
+    # Prepare input data for prediction
+    input_df = pd.DataFrame([input_dict])
+    # One-hot encode categorical columns
+    categorical_cols = ['posteam', 'defteam', 'run_gap', 'run_location']
+    input_df_encoded = pd.get_dummies(input_df, columns=categorical_cols, drop_first=True)
+    # Align with training data columns
+    model_cols = model.feature_names_in_
+    for col in model_cols:
+        if col not in input_df_encoded.columns:
+            input_df_encoded[col] = 0
+    input_df_encoded = input_df_encoded.reindex(columns=model_cols, fill_value=0)
+    # Make prediction
+    prediction = model.predict(input_df_encoded)
+    return prediction[0]
+
+
+
+
+
+
+
 
 
 
@@ -131,38 +164,9 @@ def train_exp_yards_model_run():
 
 
 def train_exp_yards_model_pass():
+    ''' This regression model predicts expected yardage for passing plays '''
+
     return "Placeholder for expected yards model for passing plays"
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-def predict_exp_yards_run():
-    pass
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

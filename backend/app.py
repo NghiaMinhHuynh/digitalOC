@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from pbp_situation_model import predict_play
 from run_model import predict_run_metrics
 from pass_model import predict_pass_metrics
+from exp_yards_model import predict_exp_yards_pass, predict_exp_yards_run
 from routeDrawer.playDraw import visualize_play
 
 import joblib
