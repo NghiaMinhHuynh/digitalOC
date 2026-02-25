@@ -47,7 +47,10 @@ def suggest_play(situation):
     prediction, confidence = predict_play(situation, trained_model=pbp_model)
 
 
-    # Depending on the prediction, feed it into the run or pass model
+    # Depending on the prediction, feed it into the run or pass model, 
+    # then create a play visualization and return expected yards for the suggested play
+    exp_yards = None
+
     if prediction == 'run':
         run_prediction = predict_run_metrics(situation, trained_models=run_models)
         run_gap = run_prediction['run_gap']
@@ -79,11 +82,17 @@ def suggest_play(situation):
             "offense_formation": offense_formation,
             "offense_personnel": personnel_rb_wr_te,
             "route": None,
-            "involved_player_position": "RB"
+            "involved_player_position": "RB",
+            "posteam": situation[10],
+            "defteam": situation[11]
         }
 
         # Play visualization will be saved to play_visualization.png
         visualize_play(run_play_input)
+
+        # Return expected yards for the suggested run play
+        exp_yards = predict_exp_yards_run(run_play_input).round(2)
+        print(f"Expected Yards for Suggested Run Play: {exp_yards}")
 
 
     elif prediction == 'pass':
@@ -117,16 +126,22 @@ def suggest_play(situation):
             "offense_formation": offense_formation,
             "offense_personnel": offense_personnel,
             "route": route,
-            "involved_player_position": receiver_position
+            "involved_player_position": receiver_position,
+            "posteam": situation[10],
+            "defteam": situation[11]
         }
 
         # Play visualization will be saved to play_visualization.png
         visualize_play(pass_play_input)
 
+        # Return expected yards for the suggested pass play
+        exp_yards = 10.00 # placeholder!
+        print(f"Expected Yards for Suggested Pass Play: {exp_yards}")
+
     else:
         print("Unknown play type prediction.")
 
-    return "Success"
+    return str(exp_yards)
 
 
 @app.route("/playVisualization", methods=['GET'])
