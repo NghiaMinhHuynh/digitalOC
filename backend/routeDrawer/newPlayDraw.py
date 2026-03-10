@@ -181,14 +181,14 @@ def get_start_position(position, pass_location, formation, route=None):
         return (-2, backfield_y) if location_side == 'left' else (2, backfield_y)
 
     elif position == 'TE':
-        return (-6, -0.5) if location_side == 'left' else (6, -0.5)
+        return (-5, -0.5) if location_side == 'left' else (5, -0.5)
 
     elif position == 'WR':
         # Fixed positions: outside=±18, inside=±8
         # The concept logic determines which receiver runs which route
         route_key = str(route).upper() if route else 'UNKNOWN'
         if route_key in SLOT_ROUTES:
-            return (-8, -0.5) if location_side == 'left' else (8, -0.5)
+            return (-6, -0.5) if location_side == 'left' else (6, -0.5)
         else:
             return (-18, -0.5) if location_side == 'left' else (18, -0.5)
 
@@ -213,7 +213,7 @@ def get_companion_start_position(primary_pos, pass_location, companion_pref, for
     sign = -1 if location_side == 'left' else 1
 
     if companion_pref == 'inside':
-        comp_x = sign * 8   # inside/slot
+        comp_x = sign * 12   # inside/slot
     else:
         comp_x = sign * 18   # outside/wide
 
@@ -300,9 +300,7 @@ def get_run_path(run_location, run_gap, start_pos):
     return [(target_x, 0.5), (target_x, 5)]
 
 
-# ---------------------------------------------------------------------------
 # PERSONNEL PARSING & ALIGNMENT
-# ---------------------------------------------------------------------------
 
 def parse_personnel(personnel_str):
     counts = {'RB': 0, 'TE': 0, 'WR': 0}
@@ -341,10 +339,10 @@ def get_default_alignments(personnel_counts, formation, play_type='pass', locati
     WR_SLOTS = [
         (-18, -0.5), (18, -0.5),
         (-11, -1),   (11, -1),
-        (6,  -0.5),  (-6, -0.5),
+        (7,  -0.5),  (-7, -0.5),
     ]
-    TE_SLOT_RIGHT = (6, -1)
-    TE_SLOT_LEFT  = (-6, -1)
+    TE_SLOT_RIGHT = (5.5, -1)
+    TE_SLOT_LEFT  = (-5.5, -1)
 
     is_run = play_type == 'run'
     run_side = str(location).lower() if location else ''
@@ -432,9 +430,7 @@ def _draw_route(ax, start_pos, path, color, lw=3):
     )
 
 
-# ---------------------------------------------------------------------------
 # MAIN VISUALIZATION
-# ---------------------------------------------------------------------------
 
 def visualize_play(play_data, save_path='play_visualization.png'):
     """
@@ -566,7 +562,7 @@ def visualize_play(play_data, save_path='play_visualization.png'):
                 backside, backside_companion_air
             )
 
-    # ---- RUN PLAY ----
+    #      RUN PLAY 
     elif pd.notna(run_gap):
         play_type     = 'run'
         location      = play_data.get('run_location')
@@ -577,7 +573,7 @@ def visualize_play(play_data, save_path='play_visualization.png'):
         start_pos = get_start_position(position, location, formation)
         path      = get_run_path(location, run_gap_val, start_pos)
 
-    # ---- FALLBACK ----
+    #      FALLBACK 
     else:
         start_pos  = (0, -1)
         location   = None
@@ -590,9 +586,7 @@ def visualize_play(play_data, save_path='play_visualization.png'):
     if concept_name:
         print(f"  > Concept:   {concept_name}")
 
-    # ----------------------------------------------------------------
     # BUILD FIGURE
-    # ----------------------------------------------------------------
     fig, ax = plt.subplots(figsize=(7, 10))
     fig.patch.set_facecolor('#1A1A2E')
 
@@ -744,8 +738,8 @@ if __name__ == "__main__":
             "yardline_100": 35, "down": 2, "ydstogo": 7,
             "pass_length": "short", "pass_location": "left", "air_yards": 2,
             "run_location": None, "run_gap": None,
-            "offense_formation": "SHOTGUN", "offense_personnel": "1 RB, 1 TE, 3 WR",
-            "route": "FLAT", "involved_player_position": "WR"
+            "offense_formation": "SHOTGUN", "offense_personnel": "1 RB, 2 TE, 2 WR",
+            "route": "FLAT", "involved_player_position": "TE"
         },
         # 3. CROSS → Y CROSS -> GHOST
         {
