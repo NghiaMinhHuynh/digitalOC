@@ -37,11 +37,11 @@ import matplotlib.patches as mpatches
 import numpy as np
 
 
-# ---------------------------------------------------------------------------
+
 # CONCEPT DEFINITIONS
 # Maps a primary route → (concept_name, secondary_route, secondary_position_pref)
 # secondary_position_pref: 'inside' or 'outside' (which player runs the companion)
-# ---------------------------------------------------------------------------
+
 ROUTE_CONCEPTS = {
     # companion_air: explicit depth for companion; None = derive below per-route
     'GO':     lambda ay: ('FLOAT',        'OUT',    'inside',  5),                            # short out underneath
@@ -63,7 +63,7 @@ ROUTE_CONCEPTS = {
     ),
     'SLANT':  lambda ay: ('DOUBLE SLANTS','SLANT',  'outside', 6),                          # match slant depth
     'CORNER': lambda ay: ('SCISSORS',     'POST',   'outside', (ay or 12)),                 # post same depth as corner
-    'POST':   lambda ay: ('MILLS',        'IN',     'inside',  max((ay or 12) - 4, 8)),     # in slightly shorter than post
+    'POST':   lambda ay: ('MILLS',        'IN',     'inside',  max((ay or 12), 8)),         # in slightly shorter than post
     'WHEEL':  lambda ay: ('POST-WHEEL',   'POST',   'outside', max((ay or 14) - 2, 12)),    # post just under wheel depth
 }
 
@@ -71,12 +71,10 @@ ROUTE_CONCEPTS = {
 # while in others the companion is the INSIDE receiver.
 # We handle companion positioning in get_companion_position().
 
-# ---------------------------------------------------------------------------
 # BACKSIDE CONCEPTS
 # Maps frontside concept -> (backside_concept_name, backside_primary_route, 
 #                            backside_companion_route, backside_companion_pref, 
 #                            backside_primary_air, backside_companion_air)
-# ---------------------------------------------------------------------------
 BACKSIDE_CONCEPTS = {
     'FLOAT':        ('Y CROSS',  'CROSS', 'DIG',    'outside', 10, 10),
     'FLANK':        ('FLOAT',    'GO',    'OUT',    'inside',  14, 5),
@@ -93,9 +91,7 @@ BACKSIDE_CONCEPTS = {
 }
 
 
-# ---------------------------------------------------------------------------
 # FIELD DRAWING
-# ---------------------------------------------------------------------------
 
 def draw_field(ax, ydstogo, yardline_100):
     ax.set_facecolor('#3A9D23')
@@ -149,9 +145,7 @@ def draw_field(ax, ydstogo, yardline_100):
     ax.set_yticks([])
 
 
-# ---------------------------------------------------------------------------
 # PLAYER POSITIONING
-# ---------------------------------------------------------------------------
 
 # Routes that break outward — typically run from the slot (inside alignment)
 SLOT_ROUTES = {'OUT', 'FLAT', 'CORNER', 'WHEEL', 'SCREEN', 'CROSS', 'SLANT'}
@@ -230,9 +224,7 @@ def get_companion_start_position(primary_pos, pass_location, companion_pref, for
     return (comp_x, -0.5)
 
 
-# ---------------------------------------------------------------------------
 # ROUTE PATHS
-# ---------------------------------------------------------------------------
 
 def get_route_path(route_name, start_pos, position, location, air_yards):
     if pd.isna(route_name):
@@ -258,8 +250,8 @@ def get_route_path(route_name, start_pos, position, location, air_yards):
         ROUTE_DEFINITIONS = {
             'GO':     lambda y: [(0, y*0.5), (0, y)],
             'FADE':   lambda y: [(1, y*0.5), (3, y)],
-            'OUT':    lambda y: [(0, y*0.8), (0, y), (5, y)],
-            'IN':     lambda y: [(0, y*0.75), (0, y*0.75), (-5, y*0.75)],
+            'OUT':    lambda y: [(0, y*0.8), (0, y), (10, y)],
+            'IN':     lambda y: [(0, y*0.75), (0, y*0.75), (-10, y*0.75)],
             'HITCH':  lambda y: [(0, y), (0, y-2)],
             'CURL':   lambda y: [(0, y), (0, y+2), (0, y), (-2, y)],
             'SLANT':  lambda _: [(0, 3), (-3, 6)],
@@ -678,39 +670,37 @@ def visualize_play(play_data, save_path='play_visualization.png'):
         else:
             ax.plot(x, y, 'o', color='white', markersize=10, alpha=0.7)
 
-    # Draw primary receiver / rusher (CYAN)
+    # Draw primary receiver / rusher (RED)
     sx, sy = start_pos
-    ax.plot(sx, sy, 'o', color='cyan', markersize=12, label=plot_label)
-    _draw_route(ax, start_pos, path, color='cyan', lw=3)
+    ax.plot(sx, sy, 'o', color='red', markersize=12, label=plot_label)
+    _draw_route(ax, start_pos, path, color='red', lw=3)
 
-    # Draw companion receiver (ORANGE) — pass plays only
+    # Draw companion receiver(s) (LIGHT BLUE) — pass plays only
     if companion_start is not None and companion_path:
         cx, cy = companion_start
         pos_type = 'TE' if companion_is_te else 'WR'
         companion_label = 'Companion {} ({})'.format(pos_type, concept_name)
-        ax.plot(cx, cy, 'o', color='#FF8C00', markersize=12, label=companion_label)
-        _draw_route(ax, companion_start, companion_path, color='#FF8C00', lw=3)
+        ax.plot(cx, cy, 'o', color="#72CEFF", markersize=12, label=companion_label)
+        _draw_route(ax, companion_start, companion_path, color='#72CEFF', lw=3)
     elif companion_start is not None:
         # Screen concept: companion blocks — just show player, no route
         cx, cy = companion_start
-        ax.plot(cx, cy, 'o', color='#FF8C00', markersize=12,
+        ax.plot(cx, cy, 'o', color='#72CEFF', markersize=12,
                 label='Blocker / No Route')
 
-    # Draw backside concept receivers (PURPLE = primary, MAGENTA = companion)
     if backside_primary_start is not None:
         bx, by = backside_primary_start
-        ax.plot(bx, by, 'o', color='#9370DB', markersize=12,
+        ax.plot(bx, by, 'o', color='#72CEFF', markersize=12,
                 label='Backside Primary ({})'.format(backside_concept_name))
-        _draw_route(ax, backside_primary_start, backside_primary_path, color='#9370DB', lw=3)
+        _draw_route(ax, backside_primary_start, backside_primary_path, color='#72CEFF', lw=3)
     
     if backside_companion_start is not None:
         bcx, bcy = backside_companion_start
         pos_type = 'TE' if backside_companion_is_te else 'WR'
-        ax.plot(bcx, bcy, 'o', color='#FF00FF', markersize=12,
+        ax.plot(bcx, bcy, 'o', color="#72CEFF", markersize=12,
                 label='Backside {} ({})'.format(pos_type, backside_concept_name))
-        _draw_route(ax, backside_companion_start, backside_companion_path, color='#FF00FF', lw=3)
+        _draw_route(ax, backside_companion_start, backside_companion_path, color='#72CEFF', lw=3)
 
-    # Title
     title_text = (
         f"{down_str} | {yardline_str}\n"
         f"Position: {position} | {path_info_str}\n"
@@ -725,7 +715,7 @@ def visualize_play(play_data, save_path='play_visualization.png'):
     for h, l in zip(handles, labels):
         if l not in unique:
             unique[l] = h
-    ax.legend(unique.values(), unique.keys(), loc='upper left',
+    ax.legend(unique.values(), unique.keys(), loc='upper right',
               facecolor='#2A2A3E', edgecolor='white', labelcolor='white', fontsize=9)
 
     plt.tight_layout()
@@ -734,15 +724,14 @@ def visualize_play(play_data, save_path='play_visualization.png'):
     plt.close()
 
 
-# ---------------------------------------------------------------------------
 # TEST CASES
-# ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
     # --- Test all 11 concepts ---
+    # Given route -> Concept -> Complimentary concept
 
     test_plays = [
-        # 1. GO → FLOAT
+        # 1. GO → FLOAT -> Y CROSS
         {
             "yardline_100": 25, "down": 1, "ydstogo": 10,
             "pass_length": "deep", "pass_location": "right", "air_yards": 15,
@@ -750,7 +739,7 @@ if __name__ == "__main__":
             "offense_formation": "SHOTGUN", "offense_personnel": "1 RB, 1 TE, 3 WR",
             "route": "GO", "involved_player_position": "WR"
         },
-        # 2. FLAT → FLANK
+        # 2. FLAT → FLANK -> FLOAT
         {
             "yardline_100": 35, "down": 2, "ydstogo": 7,
             "pass_length": "short", "pass_location": "left", "air_yards": 2,
@@ -758,7 +747,7 @@ if __name__ == "__main__":
             "offense_formation": "SHOTGUN", "offense_personnel": "1 RB, 1 TE, 3 WR",
             "route": "FLAT", "involved_player_position": "WR"
         },
-        # 3. CROSS → Y CROSS
+        # 3. CROSS → Y CROSS -> GHOST
         {
             "yardline_100": 40, "down": 3, "ydstogo": 8,
             "pass_length": "medium", "pass_location": "right", "air_yards": 10,
@@ -766,7 +755,7 @@ if __name__ == "__main__":
             "offense_formation": "SHOTGUN", "offense_personnel": "1 RB, 1 TE, 3 WR",
             "route": "CROSS", "involved_player_position": "WR"
         },
-        # 4. HITCH (5 yds) → SMASH
+        # 4. HITCH (5 yds) → SMASH -> DAGGER
         {
             "yardline_100": 20, "down": 2, "ydstogo": 5,
             "pass_length": "short", "pass_location": "right", "air_yards": 5,
@@ -774,7 +763,7 @@ if __name__ == "__main__":
             "offense_formation": "SHOTGUN", "offense_personnel": "1 RB, 1 TE, 3 WR",
             "route": "HITCH", "involved_player_position": "WR"
         },
-        # 5. HITCH (10 yds) → CURLS
+        # 5. HITCH (10 yds) → CURLS -> SCISSORS
         {
             "yardline_100": 30, "down": 3, "ydstogo": 10,
             "pass_length": "medium", "pass_location": "left", "air_yards": 10,
@@ -790,7 +779,7 @@ if __name__ == "__main__":
             "offense_formation": "SHOTGUN", "offense_personnel": "1 RB, 1 TE, 3 WR",
             "route": "SCREEN", "involved_player_position": "WR"
         },
-        # 7. OUT → GHOST
+        # 7. OUT → GHOST -> MILLS
         {
             "yardline_100": 25, "down": 1, "ydstogo": 10,
             "pass_length": "short", "pass_location": "left", "air_yards": 8,
@@ -798,7 +787,7 @@ if __name__ == "__main__":
             "offense_formation": "SHOTGUN", "offense_personnel": "1 RB, 1 TE, 3 WR",
             "route": "OUT", "involved_player_position": "WR"
         },
-        # 8. IN (9 yds) → DRIVE
+        # 8. IN (9 yds) → DAGGER -> SCISSORS
         {
             "yardline_100": 25, "down": 1, "ydstogo": 10,
             "pass_length": "short", "pass_location": "left", "air_yards": 9,
@@ -806,7 +795,7 @@ if __name__ == "__main__":
             "offense_formation": "SHOTGUN", "offense_personnel": "1 RB, 1 TE, 3 WR",
             "route": "IN", "involved_player_position": "WR"
         },
-        # 9. SLANT → DOUBLE SLANTS
+        # 9. SLANT → DOUBLE SLANTS -> FLANK
         {
             "yardline_100": 35, "down": 2, "ydstogo": 6,
             "pass_length": "short", "pass_location": "right", "air_yards": 5,
@@ -814,7 +803,7 @@ if __name__ == "__main__":
             "offense_formation": "SHOTGUN", "offense_personnel": "1 RB, 1 TE, 3 WR",
             "route": "SLANT", "involved_player_position": "WR"
         },
-        # 10. CORNER → SCISSORS
+        # 10. CORNER → SCISSORS -> SLANTS
         {
             "yardline_100": 20, "down": 2, "ydstogo": 7,
             "pass_length": "deep", "pass_location": "right", "air_yards": 12,
@@ -822,7 +811,7 @@ if __name__ == "__main__":
             "offense_formation": "SHOTGUN", "offense_personnel": "1 RB, 1 TE, 3 WR",
             "route": "CORNER", "involved_player_position": "WR"
         },
-        # 11. POST → MILLS
+        # 11. POST → MILLS -> SCISSORS
         {
             "yardline_100": 30, "down": 1, "ydstogo": 10,
             "pass_length": "deep", "pass_location": "right", "air_yards": 14,
@@ -830,7 +819,7 @@ if __name__ == "__main__":
             "offense_formation": "SHOTGUN", "offense_personnel": "1 RB, 1 TE, 3 WR",
             "route": "POST", "involved_player_position": "WR"
         },
-        # 12. WHEEL → POST-WHEEL
+        # 12. WHEEL → POST-WHEEL -> SMASH
         {
             "yardline_100": 30, "down": 1, "ydstogo": 10,
             "pass_length": "deep", "pass_location": "right", "air_yards": 15,
@@ -846,24 +835,3 @@ if __name__ == "__main__":
         visualize_play(play, save_path=out)
         print(f"  > Saved: {out}")
 
-    # Also run original pass/run examples
-    pass_play_input = {
-        "yardline_100": 25, "down": 1, "ydstogo": 10,
-        "pass_length": "short", "pass_location": "left", "air_yards": 8,
-        "run_location": None, "run_gap": None, "rusher": None, "receiver": "D.Hopkins",
-        "offense_formation": "SHOTGUN", "offense_personnel": "1 RB, 1 TE, 3 WR",
-        "route": "IN", "involved_player_position": "WR"
-    }
-    run_play_input = {
-        "yardline_100": 40, "down": 2, "ydstogo": 6,
-        "pass_length": None, "pass_location": None, "air_yards": None,
-        "run_location": "right", "run_gap": "tackle", "rusher": "D.Cook", "receiver": None,
-        "offense_formation": "I_FORM", "offense_personnel": "2 RB, 2 TE, 1 WR",
-        "route": None, "involved_player_position": "RB"
-    }
-
-    print("\n=== Original Pass Example (IN → DRIVE) ===")
-    visualize_play(pass_play_input, save_path='example_pass_in_drive.png')
-
-    print("\n=== Original Run Example ===")
-    visualize_play(run_play_input, save_path='example_run.png')
