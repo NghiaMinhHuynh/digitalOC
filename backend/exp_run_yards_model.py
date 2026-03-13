@@ -1,9 +1,9 @@
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
-from sklearn.linear_model import LinearRegression, Ridge
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.linear_model import LinearRegression, Ridge, LogisticRegression
+from sklearn.ensemble import RandomForestRegressor, GradientBoostingClassifier
+from sklearn.metrics import mean_squared_error, r2_score, accuracy_score, classification_report
 import joblib
 import json
 from pathlib import Path
@@ -143,46 +143,5 @@ def predict_exp_yards_run(input_dict):
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-def train_exp_yards_model_pass():
-    ''' This regression model predicts expected yardage for passing plays '''
-
-    return "Placeholder for expected yards model for passing plays"
-
-
-
-
-def predict_exp_yards_pass():
-    pass
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 if __name__ == "__main__":
     train_exp_yards_model_run()
-    train_exp_yards_model_pass()

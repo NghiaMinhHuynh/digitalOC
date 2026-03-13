@@ -7,7 +7,8 @@ import matplotlib.pyplot as plt
 from pbp_situation_model import predict_play
 from run_model import predict_run_metrics
 from pass_model import predict_pass_metrics
-from exp_yards_model import predict_exp_yards_pass, predict_exp_yards_run
+from exp_run_yards_model import predict_exp_yards_run
+from exp_pass_yards_model import predict_exp_yards_pass
 from routeDrawer.playDraw import visualize_play
 
 import joblib
@@ -93,7 +94,6 @@ def suggest_play(situation):
         # Return expected yards for the suggested run play
         exp_yards = predict_exp_yards_run(run_play_input).round(2)
         print(f"Expected Yards for Suggested Run Play: {exp_yards}")
-
 
     elif prediction == 'pass':
         pass_prediction = predict_pass_metrics(situation, trained_models=pass_models)
