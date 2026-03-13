@@ -47,7 +47,6 @@ def suggest_play(situation):
     # Predict whether the play type for the given situation should be a run or pass
     prediction, confidence = predict_play(situation, trained_model=pbp_model)
 
-
     # Depending on the prediction, feed it into the run or pass model, 
     # then create a play visualization and return expected yards for the suggested play
     exp_yards = None
@@ -92,7 +91,7 @@ def suggest_play(situation):
         visualize_play(run_play_input)
 
         # Return expected yards for the suggested run play
-        exp_yards = predict_exp_yards_run(run_play_input).round(2)
+        exp_yards = str(predict_exp_yards_run(run_play_input).round(2))
         print(f"Expected Yards for Suggested Run Play: {exp_yards}")
 
     elif prediction == 'pass':
@@ -134,14 +133,18 @@ def suggest_play(situation):
         # Play visualization will be saved to play_visualization.png
         visualize_play(pass_play_input)
 
+        # Get the percent of a completed pass and expected yards (if complete) for the passing play
+        p_complete_and_exp_yards = predict_exp_yards_pass(pass_play_input)
+        print(f"Percentage complete and expected yards: {p_complete_and_exp_yards}")
+
         # Return expected yards for the suggested pass play
-        exp_yards = 10.00 # placeholder!
+        exp_yards = f"{p_complete_and_exp_yards[0].round(2)}\n% will be complete: {(p_complete_and_exp_yards[1]*100).round(0)}"
         print(f"Expected Yards for Suggested Pass Play: {exp_yards}")
 
     else:
         print("Unknown play type prediction.")
 
-    return str(exp_yards)
+    return exp_yards
 
 
 @app.route("/playVisualization", methods=['GET'])
