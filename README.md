@@ -2,11 +2,11 @@
 
 An intelligent NFL play-calling assistant that leverages machine learning and real play-by-play data to recommend optimal offensive plays for any game situation.
 
-## 🏈 Overview
+## Overview
 
 DigitalOC is a full-stack web application that combines NFL play-by-play data, team Elo ratings, and Next Gen Stats to power ML models that predict the best offensive strategy. The app features an interactive React frontend where users can input game situations and receive AI-driven play recommendations with visual play diagrams.
 
-## ✨ Features
+## Features
 
 - **Interactive Situation Input**: Modern UI with team selection, down/distance, field position, score, time, and timeout tracking
 - **Dynamic Team Branding**: Real-time gradient backgrounds using official NFL team colors
@@ -17,7 +17,7 @@ DigitalOC is a full-stack web application that combines NFL play-by-play data, t
 - **Visual Play Diagrams**: Automated route visualization with receiver positions and routes
 - **Real-Time Results**: Side-by-side comparison of situation details and recommended plays
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 ### Frontend
 - **React 19.2** with React Router for navigation
@@ -38,7 +38,7 @@ DigitalOC is a full-stack web application that combines NFL play-by-play data, t
 - Snap counts and participation data
 - Custom team Elo ratings
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 digitalOC/
@@ -60,7 +60,7 @@ digitalOC/
     └── models/                  # Trained model artifacts
 ```
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 - Python 3.8+
@@ -145,7 +145,7 @@ Predicts expected metrics for pass plays:
 ### Team Elo System
 Custom Elo ratings categorized by play situation (e.g., early down, late & long, goal line) to capture team strength in different scenarios.
 
-## 👥 Contributors
+## Contributors
 **Noah Worobec** ([@nworobec](https://github.com/nworobec)),
 **Russel C** ([@russelchao](https://github.com/russellchao)),
 **Gavin C** ([@gavinc1225](https://github.com/gavinc1225)),
@@ -156,16 +156,16 @@ Custom Elo ratings categorized by play situation (e.g., early down, late & long,
 **Rafiki M** ([@RafikiMwethuku](https://github.com/RafikiMwethuku))
 
 
-## 📝 License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🔗 Related Links
+## Related Links
 
 - [NFL Play-by-Play Data](https://github.com/nflverse/nflverse-data)
 - [Next Gen Stats](https://nextgenstats.nfl.com/)
 
-## 🎯 Future Enhancements
+## Future Enhancements
 
 - Personnel grouping recommendations
 - Historical success rate comparisons
