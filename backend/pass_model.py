@@ -321,6 +321,48 @@ def predict_pass_metrics(situation, trained_models):
 
     return predictions
 
+def predict_pass_metric_candidates(situation, trained_models, top_k=3):
+    """
+    Return top-k candidates with probabilities for each pass-related metric.
+    """
+    situation_df = pd.DataFrame([situation], columns=[
+        'down', 'ydstogo', 'yardline_100', 'goal_to_go', 'quarter_seconds_remaining',
+        'half_seconds_remaining', 'game_seconds_remaining', 'score_differential',
+        'posteam_timeouts_remaining', 'defteam_timeouts_remaining', 'posteam', 'defteam',
+        'is_midfield_aggression', 'is_deep_redzone'
+    ])
+
+    situation_df = add_football_intelligence_features(situation_df)
+    features = build_global_feature_set(situation_df)
+    situation_encoded, _ = global_encode(situation_df, features)
+
+    predictions = {}
+
+    for target, model_info in trained_models.items():
+        model = model_info["model"]
+        model_features = model_info["feature_columns"]
+
+        for col in model_features:
+            if col not in situation_encoded.columns:
+                situation_encoded[col] = 0
+
+        situation_input = situation_encoded[model_features]
+
+        probs = model.predict_proba(situation_input)[0]
+        classes = model.classes_
+
+        ranked = sorted(
+            zip(classes, probs),
+            key=lambda x: x[1],
+            reverse=True
+        )[:top_k]
+
+        predictions[target] = [
+            {"label": label, "prob": float(prob)}
+            for label, prob in ranked
+        ]
+
+    return predictions
 
 if __name__ == "__main__":
     # Train the Pass models when running this file separately
