@@ -247,7 +247,89 @@ def predict_run_metrics(situation, trained_models):
 
     return run_metrics
 
+def predict_run_metric_candidates(situation, trained_models, top_k=3):
+    """
+    Return top-k candidates with probabilities for each run-related metric.
+    """
+    situation_df = pd.DataFrame([situation], columns=[
+        'down', 'ydstogo', 'yardline_100', 'goal_to_go', 'quarter_seconds_remaining',
+        'half_seconds_remaining', 'game_seconds_remaining', 'score_differential',
+        'posteam_timeouts_remaining', 'defteam_timeouts_remaining', 'posteam', 'defteam',
+        'is_midfield_aggression', 'is_deep_redzone'
+    ])
 
+    situation_df["is_redzone"] = (situation_df["yardline_100"] <= 20).astype(int)
+    situation_df["is_goal_line"] = (
+        (situation_df["goal_to_go"] == 1) & (situation_df["yardline_100"] <= 10)
+    ).astype(int)
+    situation_df["is_short_yardage"] = (
+        (situation_df["ydstogo"] <= 2) & (situation_df["down"] >= 3)
+    ).astype(int)
+
+    if situation[6] > 2700:
+        qtr = 1
+    elif situation[6] > 1800:
+        qtr = 2
+    elif situation[6] > 900:
+        qtr = 3
+    else:
+        qtr = 4
+
+    situation_df["qtr"] = qtr
+    situation_df["is_two_minute_drill"] = (
+        (situation_df["quarter_seconds_remaining"] <= 120)
+        & (situation_df["qtr"].isin([2, 4]))
+    ).astype(int)
+    situation_df["is_close_game_late"] = (
+        (situation_df["qtr"] == 4)
+        & (situation_df["score_differential"].abs() <= 8)
+    ).astype(int)
+
+    situation_df["shotgun"] = 0
+    situation_df["no_huddle"] = 0
+    situation_df["roof"] = "outdoors"
+    situation_df["surface"] = "grass"
+    situation_df["temp"] = 70
+    situation_df["wind"] = 0
+
+    categorical_cols = ["posteam", "defteam", "roof", "surface", "qtr"]
+    situation_encoded = pd.get_dummies(
+        situation_df,
+        columns=categorical_cols,
+        drop_first=True,
+    )
+
+    metric_candidates = {}
+
+    for metric in ["run_gap", "run_location", "offense_formation", "personnel_off"]:
+        if metric not in trained_models:
+            continue
+
+        model_info = trained_models[metric]
+        model = model_info["model"]
+        model_columns = model_info["columns"]
+
+        for col in model_columns:
+            if col not in situation_encoded.columns:
+                situation_encoded[col] = 0
+
+        situation_for_prediction = situation_encoded[model_columns]
+
+        probs = model.predict_proba(situation_for_prediction)[0]
+        classes = model.classes_
+
+        ranked = sorted(
+            zip(classes, probs),
+            key=lambda x: x[1],
+            reverse=True
+        )[:top_k]
+
+        metric_candidates[metric] = [
+            {"label": label, "prob": float(prob)}
+            for label, prob in ranked
+        ]
+
+    return metric_candidates
 
 if __name__ == "__main__":
     # Train the Run models when running this file separately
