@@ -5,8 +5,8 @@ matplotlib.use('Agg')  # Use non-interactive backend for Flask
 import matplotlib.pyplot as plt
 
 from pbp_situation_model import predict_play
-from run_model import predict_run_metrics
-from pass_model import predict_pass_metrics
+from run_model import predict_run_metrics, predict_run_metric_candidates
+from pass_model import predict_pass_metrics, predict_pass_metric_candidates
 from routeDrawer.playDraw import visualize_play
 
 import joblib
@@ -28,6 +28,101 @@ with open(model_dir / "pbp_situation_model_meta.json", 'r') as f:
     metadata = json.load(f)
 pbp_feature_columns = metadata["feature_columns"]
 
+def clean_personnel_for_visual(personnel_off):
+    if not personnel_off:
+        return personnel_off
+    return ', '.join([
+        part for part in personnel_off.split(', ')
+        if any(pos in part for pos in ['RB', 'WR', 'TE'])
+    ])
+
+
+def dedupe_plays(plays):
+    seen = set()
+    unique = []
+
+    for play in plays:
+        key = tuple(sorted(play.items()))
+        if key not in seen:
+            seen.add(key)
+            unique.append(play)
+
+    return unique
+
+
+def build_run_play_candidates(situation, run_models, play_type_confidence, top_k_each=3):
+    candidates = predict_run_metric_candidates(situation, run_models, top_k=top_k_each)
+
+    required = ["run_gap", "run_location", "offense_formation", "personnel_off"]
+    if not all(metric in candidates for metric in required):
+        return []
+
+    plays = []
+    for gap in candidates["run_gap"]:
+        for loc in candidates["run_location"]:
+            for formation in candidates["offense_formation"]:
+                for personnel in candidates["personnel_off"]:
+                    score = (
+                        play_type_confidence
+                        * gap["prob"]
+                        * loc["prob"]
+                        * formation["prob"]
+                        * personnel["prob"]
+                    )
+
+                    plays.append({
+                        "play_type": "run",
+                        "score": float(score),
+                        "run_gap": gap["label"],
+                        "run_location": loc["label"],
+                        "offense_formation": formation["label"],
+                        "personnel_off": personnel["label"],
+                    })
+
+    plays.sort(key=lambda x: x["score"], reverse=True)
+    return dedupe_plays(plays)
+
+
+def build_pass_play_candidates(situation, pass_models, play_type_confidence, top_k_each=2):
+    candidates = predict_pass_metric_candidates(situation, pass_models, top_k=top_k_each)
+
+    required = [
+        "pass_length", "pass_location", "offense_formation",
+        "offense_personnel", "route", "receiver_position"
+    ]
+    if not all(metric in candidates for metric in required):
+        return []
+
+    plays = []
+    for pass_length in candidates["pass_length"]:
+        for pass_location in candidates["pass_location"]:
+            for formation in candidates["offense_formation"]:
+                for personnel in candidates["offense_personnel"]:
+                    for route in candidates["route"]:
+                        for receiver in candidates["receiver_position"]:
+                            score = (
+                                play_type_confidence
+                                * pass_length["prob"]
+                                * pass_location["prob"]
+                                * formation["prob"]
+                                * personnel["prob"]
+                                * route["prob"]
+                                * receiver["prob"]
+                            )
+
+                            plays.append({
+                                "play_type": "pass",
+                                "score": float(score),
+                                "pass_length": pass_length["label"],
+                                "pass_location": pass_location["label"],
+                                "offense_formation": formation["label"],
+                                "offense_personnel": personnel["label"],
+                                "route": route["label"],
+                                "receiver_position": receiver["label"],
+                            })
+
+    plays.sort(key=lambda x: x["score"], reverse=True)
+    return dedupe_plays(plays)
 
 @app.route("/suggestPlay/<situation>", methods=['GET'])
 def suggest_play(situation):
