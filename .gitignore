@@ -14,3 +14,5 @@ backend/model_trainers/__pycache__/add_participation_features.cpython-312.pyc
 backend/model_trainers/__pycache__/add_participation_features.cpython-312.pyc
 backend/model_trainers/__pycache__/parse_personnel.cpython-312.pyc
 backend/model_trainers/__pycache__/TeamElo.cpython-312.pyc
+backend/model_trainers/__pycache__/add_additional_pbp_features.cpython-312.pyc
+backend/__pycache__/add_additional_pbp_features.cpython-312.pyc
