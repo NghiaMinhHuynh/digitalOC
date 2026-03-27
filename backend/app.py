@@ -148,18 +148,19 @@ def suggest_play(situation):
     situation.append(is_deep_redzone)
 
     prediction_int, confidence = predict_play(
-        situation,
-        trained_model=pbp_model,
-        feature_columns=pbp_feature_columns
-    )
+    situation,
+    trained_model=pbp_model,
+    feature_columns=pbp_feature_columns
+)
 
-    # approximate both run/pass weights from binary confidence
-    if prediction_int == 1:
-        pass_conf = float(confidence)
-        run_conf = float(1 - confidence)
+    prediction_int = int(prediction_int)
+
+    if len(confidence.shape) == 2:
+        run_conf = float(confidence[0][0])
+        pass_conf = float(confidence[0][1])
     else:
-        run_conf = float(confidence)
-        pass_conf = float(1 - confidence)
+        run_conf = float(confidence[0])
+        pass_conf = float(confidence[1])
 
     run_candidates = build_run_play_candidates(
         situation=situation,
@@ -179,57 +180,6 @@ def suggest_play(situation):
     all_candidates.sort(key=lambda x: x["score"], reverse=True)
 
     top_3 = all_candidates[:3]
-
-    # optional: add expected yards
-    for play in top_3:
-        try:
-            if play["play_type"] == "run":
-                personnel_rb_wr_te = clean_personnel_for_visual(play["personnel_off"])
-                run_play_input = {
-                    "yardline_100": situation[2],
-                    "down": situation[0],
-                    "ydstogo": situation[1],
-                    "pass_length": None,
-                    "pass_location": None,
-                    "air_yards": None,
-                    "run_location": play["run_location"],
-                    "run_gap": play["run_gap"],
-                    "rusher": 'N/A',
-                    "receiver": None,
-                    "offense_formation": play["offense_formation"],
-                    "offense_personnel": personnel_rb_wr_te,
-                    "route": None,
-                    "involved_player_position": "RB",
-                    "posteam": situation[10],
-                    "defteam": situation[11]
-                }
-                play["expected_yards"] = float(predict_exp_yards_run(run_play_input).round(2))
-
-            else:
-                pass_play_input = {
-                    "yardline_100": situation[2],
-                    "down": situation[0],
-                    "ydstogo": situation[1],
-                    "pass_length": play["pass_length"],
-                    "pass_location": play["pass_location"],
-                    "air_yards": 10,
-                    "run_location": None,
-                    "run_gap": None,
-                    "rusher": None,
-                    "receiver": 'N/A',
-                    "offense_formation": play["offense_formation"],
-                    "offense_personnel": play["offense_personnel"],
-                    "route": play["route"],
-                    "involved_player_position": play["receiver_position"],
-                    "posteam": situation[10],
-                    "defteam": situation[11]
-                }
-
-                p_complete_and_exp_yards = predict_exp_yards_pass(pass_play_input)
-                play["expected_yards"] = float(p_complete_and_exp_yards[0].round(2))
-                play["completion_pct"] = float((p_complete_and_exp_yards[1] * 100).round(0))
-        except Exception as e:
-            play["expected_yards_error"] = str(e)
 
     return jsonify({
         "plays": top_3
