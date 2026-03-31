@@ -9,6 +9,15 @@ from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, classification_report
 import joblib
+import io
+import sys
+import os
+
+try:
+    from ..read_write_oci_storage import write_to_object_storage, bucket_name
+except ImportError:
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+    from read_write_oci_storage import write_to_object_storage, bucket_name
 
 DATA_FILES = ["../data/merged_pass_model_data_2020.csv"]
 DATA_FILES.append("../data/merged_pass_model_data_2021.csv")
@@ -331,10 +340,16 @@ if __name__ == "__main__":
     # Train the Pass models when running this file separately
     model = train_pass_models()
 
-    # Save the pass model to the models directory
-    model_dir = Path("../models")
-    model_dir.mkdir(exist_ok=True)
+    # # Save the pass model to the models directory
+    # model_dir = Path("../models")
+    # model_dir.mkdir(exist_ok=True)
 
-    model_path = model_dir / "pass_models.joblib"
-    joblib.dump(model, model_path)
-    print(f"Pass models saved to {model_path}")
+    # model_path = model_dir / "pass_models.joblib"
+    # joblib.dump(model, model_path)
+    # print(f"Pass models saved to {model_path}")
+
+    # Save the pass model to Oracle Cloud Storage
+    model_buffer = io.BytesIO()
+    joblib.dump(model, model_buffer)
+    write_to_object_storage(bucket_name, "pass_models.joblib", model_buffer.getvalue())
+    print("Pass models uploaded to Oracle Cloud Storage successfully.")

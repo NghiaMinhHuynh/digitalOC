@@ -8,12 +8,20 @@ from sklearn.metrics import accuracy_score, classification_report
 import joblib
 import json
 from pathlib import Path
+import sys
+import os
+import io
+
 try:
     from .add_additional_pbp_features import add_additional_pbp_features
     from .TeamElo import PlayClassifier, team_elos
+    from ..read_write_oci_storage import write_to_object_storage, bucket_name
 except ImportError:
     from add_additional_pbp_features import add_additional_pbp_features
     from TeamElo import PlayClassifier, team_elos
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+    from read_write_oci_storage import write_to_object_storage, bucket_name
+
 
 
 def train_pbp_model():
@@ -131,22 +139,35 @@ if __name__ == "__main__":
     # Train the PBP situation model when running this file separately
     model, feature_columns = train_pbp_model()
 
-    # Save the model and feature columns to the models directory
-    model_dir = Path("../models")
-    model_dir.mkdir(exist_ok=True)
+    # # Save the model and feature columns to the models directory
+    # model_dir = Path("../models")
+    # model_dir.mkdir(exist_ok=True)
     
-    # Save the trained model using joblib
-    model_path = model_dir / "pbp_situation_model.joblib"
-    joblib.dump(model, model_path)
-    print(f"Model saved to {model_path}")
+    # # Save the trained model using joblib
+    # model_path = model_dir / "pbp_situation_model.joblib"
+    # joblib.dump(model, model_path)
+    # print(f"Model saved to {model_path}")
     
-    # Save feature columns as JSON metadata
-    #feature_columns = X_train_clean.columns.tolist()
+    # # Save feature columns as JSON metadata
+    # #feature_columns = X_train_clean.columns.tolist()
+    # metadata = {
+    #     "feature_columns": feature_columns,
+    #     "model_type": "RandomForestClassifier"
+    # }
+    # meta_path = model_dir / "pbp_situation_model_meta.json"
+    # with open(meta_path, 'w') as f:
+    #     json.dump(metadata, f, indent=2)
+    # print(f"Metadata saved to {meta_path}")
+
+    # Save the model and feature columns to Oracle Cloud Storage
+    model_buffer = io.BytesIO()
+    joblib.dump(model, model_buffer)
+    write_to_object_storage(bucket_name, "pbp_situation_model.joblib", model_buffer.getvalue())
+
     metadata = {
         "feature_columns": feature_columns,
         "model_type": "RandomForestClassifier"
     }
-    meta_path = model_dir / "pbp_situation_model_meta.json"
-    with open(meta_path, 'w') as f:
-        json.dump(metadata, f, indent=2)
-    print(f"Metadata saved to {meta_path}")
+    write_to_object_storage(bucket_name, "pbp_situation_model_meta.json", json.dumps(metadata, indent=2))
+
+    print("Model and metadata uploaded to Oracle Cloud Storage successfully.")

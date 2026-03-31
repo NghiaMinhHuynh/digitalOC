@@ -7,10 +7,17 @@ from sklearn.metrics import mean_squared_error, r2_score, accuracy_score, classi
 import joblib
 import json
 from pathlib import Path
+import io
+import sys
+import os
+
 try:
     from .TeamElo import PlayClassifier, team_elos
+    from ..read_write_oci_storage import write_to_object_storage, bucket_name
 except ImportError:
     from TeamElo import PlayClassifier, team_elos
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+    from read_write_oci_storage import write_to_object_storage, bucket_name
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -188,11 +195,22 @@ def train_exp_yards_model_pass():
         print(f"P(complete): {p_complete[i]:.2f}, Yards if complete: {yards_if_complete[i]:.1f}, "
               f"Expected: {y_pred_combined[i]:.2f}, Actual: {y_test_actual.iloc[i]}")
 
-    # Save both models
-    MODEL_DIR.mkdir(parents=True, exist_ok=True)
-    joblib.dump(completion_model, MODEL_DIR / "completion_prob_model_pass.joblib")
-    joblib.dump(yards_model, MODEL_DIR / "exp_yards_if_complete_model_pass.joblib")
-    print("\nTwo-stage expected yards model for passing plays trained and saved successfully.")
+    # # Save both models
+    # MODEL_DIR.mkdir(parents=True, exist_ok=True)
+    # joblib.dump(completion_model, MODEL_DIR / "completion_prob_model_pass.joblib")
+    # joblib.dump(yards_model, MODEL_DIR / "exp_yards_if_complete_model_pass.joblib")
+    # print("\nTwo-stage expected yards model for passing plays trained and saved successfully.")
+
+    # Save both models to Oracle Cloud Storage
+    completion_buffer = io.BytesIO()
+    joblib.dump(completion_model, completion_buffer)
+    write_to_object_storage(bucket_name, "completion_prob_model_pass.joblib", completion_buffer.getvalue())
+    print("Completion probability model for passing plays uploaded to Oracle Cloud Storage successfully.")
+
+    yards_buffer = io.BytesIO()
+    joblib.dump(yards_model, yards_buffer)
+    write_to_object_storage(bucket_name, "exp_yards_if_complete_model_pass.joblib", yards_buffer.getvalue())
+    print("Expected yards model for passing plays uploaded to Oracle Cloud Storage successfully.")
 
 
 
