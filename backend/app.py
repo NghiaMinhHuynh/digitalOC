@@ -1,4 +1,5 @@
 import base64
+import io
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 import joblib
@@ -14,30 +15,27 @@ from model_trainers.pass_model import predict_pass_metrics
 from model_trainers.exp_run_yards_model import predict_exp_yards_run
 from model_trainers.exp_pass_yards_model import predict_exp_yards_pass
 from routeDrawer.playDraw import visualize_play
+from read_write_oci_storage import read_from_object_storage, bucket_name
 
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": ["http://localhost:3000", "http://127.0.0.1:3000"]}})
 
 
-# Load the PBP, run, pass, and expected yards models when the application starts
-model_dir = Path("models")
-model_dir.mkdir(exist_ok=True)
-pbp_model = joblib.load(model_dir / "pbp_situation_model.joblib")
-run_models = joblib.load(model_dir / "run_models.joblib")
-pass_models = joblib.load(model_dir / "pass_models.joblib")
-exp_run_yards_model = joblib.load(model_dir / "exp_yards_model_run.joblib")
-completion_prob_model_pass = joblib.load(model_dir / "completion_prob_model_pass.joblib")
-exp_yards_if_complete_model_pass = joblib.load(model_dir / "exp_yards_if_complete_model_pass.joblib")
-
-with open(model_dir / "pbp_situation_model_meta.json", 'r') as f:
-    metadata = json.load(f)
+# Load the PBP, run, pass, and expected yards models from the Oracle Cloud Storage when the application starts
+pbp_model = joblib.load(io.BytesIO(read_from_object_storage(bucket_name, "pbp_situation_model.joblib")))
+run_models = joblib.load(io.BytesIO(read_from_object_storage(bucket_name, "run_models.joblib")))
+pass_models = joblib.load(io.BytesIO(read_from_object_storage(bucket_name, "pass_models.joblib")))
+exp_run_yards_model = joblib.load(io.BytesIO(read_from_object_storage(bucket_name, "exp_yards_model_run.joblib")))
+completion_prob_model_pass = joblib.load(io.BytesIO(read_from_object_storage(bucket_name, "completion_prob_model_pass.joblib")))
+exp_yards_if_complete_model_pass = joblib.load(io.BytesIO(read_from_object_storage(bucket_name, "exp_yards_if_complete_model_pass.joblib")))
+metadata = json.loads(read_from_object_storage(bucket_name, "pbp_situation_model_meta.json"))
 pbp_feature_columns = metadata["feature_columns"]
 
 
 @app.route("/", methods=['GET'])
 def home():
-    return "<h1>Server is working</h1><p>"
+    return "<h1>Server is working</h1>"
 
 
 @app.route("/suggestPlay", methods=['POST'])
@@ -47,6 +45,7 @@ def suggest_play():
     # Extract the JSON payload sent by React
     data = request.get_json()
     current_situation = data.get('current_situation', {})
+    print(f"Received situation: {current_situation}")
     play_history = data.get('play_history', []) # Array of previous plays in this drive
     
     # Extract base features
@@ -140,7 +139,8 @@ def suggest_play():
             "route": None,
             "involved_player_position": "RB",
             "posteam": situation[10],
-            "defteam": situation[11]
+            "defteam": situation[11],
+            "defense_coverage_type": situation[19]
         }
 
         exp_yards = str(predict_exp_yards_run(run_play_input, exp_run_yards_model).round(2))
@@ -171,7 +171,8 @@ def suggest_play():
             "route": route,
             "involved_player_position": receiver_position,
             "posteam": situation[10],
-            "defteam": situation[11]
+            "defteam": situation[11],
+            "defense_coverage_type": situation[19]
         }
 
         p_complete_and_exp_yards = predict_exp_yards_pass(pass_play_input, completion_prob_model_pass, exp_yards_if_complete_model_pass)
@@ -183,4 +184,4 @@ def suggest_play():
 
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5000, host='0.0.0.0')
+    app.run(debug=True, port=5000, host='0.0.0.0', use_reloader=False)

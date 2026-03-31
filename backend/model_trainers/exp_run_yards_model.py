@@ -13,9 +13,13 @@ import os
 
 try:
     from .TeamElo import PlayClassifier, team_elos
+except ImportError:
+    sys.path.insert(0, os.path.dirname(__file__))
+    from TeamElo import PlayClassifier, team_elos
+
+try:
     from ..read_write_oci_storage import write_to_object_storage, bucket_name
 except ImportError:
-    from TeamElo import PlayClassifier, team_elos
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
     from read_write_oci_storage import write_to_object_storage, bucket_name
 
@@ -123,11 +127,6 @@ def train_exp_yards_model_run():
     print("\nPredicted vs Actual values for the first 10 test samples:")
     for i in range(10):
         print(f"Predicted: {y_pred[i]:.2f}, Actual: {y_test_clean.iloc[i]}")
-
-    # # Save the model
-    # MODEL_DIR.mkdir(parents=True, exist_ok=True)
-    # joblib.dump(model, MODEL_DIR / "exp_yards_model_run.joblib")
-    # print("Expected yards model for running plays trained and saved successfully.")
 
     # Save the model to Oracle Cloud Storage    
     model_buffer = io.BytesIO()

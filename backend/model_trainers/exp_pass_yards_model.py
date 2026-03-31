@@ -13,9 +13,13 @@ import os
 
 try:
     from .TeamElo import PlayClassifier, team_elos
+except ImportError:
+    sys.path.insert(0, os.path.dirname(__file__))
+    from TeamElo import PlayClassifier, team_elos
+
+try:
     from ..read_write_oci_storage import write_to_object_storage, bucket_name
 except ImportError:
-    from TeamElo import PlayClassifier, team_elos
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
     from read_write_oci_storage import write_to_object_storage, bucket_name
 
@@ -193,12 +197,6 @@ def train_exp_yards_model_pass():
     for i in range(min(10, len(y_pred_combined))):
         print(f"P(complete): {p_complete[i]:.2f}, Yards if complete: {yards_if_complete[i]:.1f}, "
               f"Expected: {y_pred_combined[i]:.2f}, Actual: {y_test_actual.iloc[i]}")
-
-    # # Save both models
-    # MODEL_DIR.mkdir(parents=True, exist_ok=True)
-    # joblib.dump(completion_model, MODEL_DIR / "completion_prob_model_pass.joblib")
-    # joblib.dump(yards_model, MODEL_DIR / "exp_yards_if_complete_model_pass.joblib")
-    # print("\nTwo-stage expected yards model for passing plays trained and saved successfully.")
 
     # Save both models to Oracle Cloud Storage
     completion_buffer = io.BytesIO()

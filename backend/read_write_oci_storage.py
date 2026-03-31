@@ -48,9 +48,9 @@ def read_from_object_storage(bucket_name, object_name):
         object_name=object_name
     )
 
-    # Read the content of the object
-    content = response.data.content.decode('utf-8')
-    print(f"Content of object '{object_name}': {content}")
+    # Read the content of the object as raw bytes
+    content = response.data.content
+    print(f"Object '{object_name}' read from bucket '{bucket_name}' ({len(content)} bytes)")
     return content
 
 

@@ -15,11 +15,15 @@ import io
 try:
     from .parse_personnel import add_personnel_features
     from .add_participation_features import add_participation_features
-    from ..read_write_oci_storage import write_to_object_storage, bucket_name
 except ImportError:
+    sys.path.insert(0, os.path.dirname(__file__))
     from parse_personnel import add_personnel_features
     from add_participation_features import add_participation_features
-    sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+
+try:
+    from ..read_write_oci_storage import write_to_object_storage, bucket_name
+except ImportError:
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
     from read_write_oci_storage import write_to_object_storage, bucket_name
 
 
@@ -265,13 +269,6 @@ if __name__ == "__main__":
     # Train the Run models when running this file separately
     print("Starting all run model training")
     all_models: Dict[str, Dict[str, Any]] = train_run_models()
-
-    # # Save the trained run models to the models directory
-    # model_dir = Path("../models")
-    # model_dir.mkdir(exist_ok=True)
-    # model_path = model_dir / "run_models.joblib"
-    # joblib.dump(all_models, model_path)
-    # print(f"Run models saved to {model_path}")
 
     if all_models:
         print("\nAll model training complete")
