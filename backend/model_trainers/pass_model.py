@@ -300,6 +300,7 @@ def predict_pass_metrics(situation, trained_models):
          'prev_is_pass', 'prev_is_run', 'prev_yards_gained', 
          'two_consecutive_runs', 'two_consecutive_passes', 'defense_coverage_type'])
 
+    print(f"PASS MODEL EVALUATING AGAINST: {situation_df['defense_coverage_type'].iloc[0]}")
     # Add the football intelligence features
     situation_df = add_football_intelligence_features(situation_df)
 
@@ -327,21 +328,22 @@ def predict_pass_metrics(situation, trained_models):
     return predictions
 
 def predict_pass_metric_candidates(situation, trained_models, top_k=3):
-    """
-    Return top-k candidates with probabilities for each pass-related metric.
-    """
     situation_df = pd.DataFrame([situation], columns=[
-        'down', 'ydstogo', 'yardline_100', 'goal_to_go', 'quarter_seconds_remaining',
-        'half_seconds_remaining', 'game_seconds_remaining', 'score_differential',
-        'posteam_timeouts_remaining', 'defteam_timeouts_remaining', 'posteam', 'defteam',
-        'is_midfield_aggression', 'is_deep_redzone'
+        'down','ydstogo','yardline_100','goal_to_go',
+        'quarter_seconds_remaining','half_seconds_remaining',
+        'game_seconds_remaining','score_differential',
+        'posteam_timeouts_remaining','defteam_timeouts_remaining',
+        'posteam','defteam',
+        'is_midfield_aggression','is_deep_redzone',
+        'prev_is_pass','prev_is_run','prev_yards_gained',
+        'two_consecutive_runs','two_consecutive_passes','defense_coverage_type'
     ])
 
     situation_df = add_football_intelligence_features(situation_df)
     features = build_global_feature_set(situation_df)
     situation_encoded, _ = global_encode(situation_df, features)
 
-    predictions = {}
+    results = {}
 
     for target, model_info in trained_models.items():
         model = model_info["model"]
@@ -351,23 +353,32 @@ def predict_pass_metric_candidates(situation, trained_models, top_k=3):
             if col not in situation_encoded.columns:
                 situation_encoded[col] = 0
 
-        situation_input = situation_encoded[model_features]
+        X = situation_encoded[model_features]
 
-        probs = model.predict_proba(situation_input)[0]
+        probs = model.predict_proba(X)[0]
         classes = model.classes_
 
-        ranked = sorted(
-            zip(classes, probs),
-            key=lambda x: x[1],
-            reverse=True
-        )[:top_k]
+        top_indices = np.argsort(probs)[::-1][:top_k]
 
-        predictions[target] = [
-            {"label": label, "prob": float(prob)}
-            for label, prob in ranked
+        results[target] = [
+            {"label": classes[i], "prob": float(probs[i])}
+            for i in top_indices
         ]
 
-    return predictions
+    plays = []
+    for i in range(top_k):
+        play = {
+            "pass_length": results["pass_length"][i]["label"],
+            "pass_location": results["pass_location"][i]["label"],
+            "route": results["route"][i]["label"],
+            "receiver_position": results["receiver_position"][i]["label"],
+            "offense_formation": results["offense_formation"][0]["label"],
+            "offense_personnel": results["offense_personnel"][0]["label"],
+            "confidence": results["pass_length"][i]["prob"]
+        }
+        plays.append(play)
+
+    return plays
 
 if __name__ == "__main__":
     # Train the Pass models when running this file separately
