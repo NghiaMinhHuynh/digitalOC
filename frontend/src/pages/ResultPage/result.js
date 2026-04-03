@@ -1,7 +1,7 @@
 import React, {useEffect, useState} from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import './result.css';
-import Sitaution, {calculateGameSeconds, calculateHalfSeconds, calculateQtrSeconds} from '../SituationPage/situation';
+import {calculateGameSeconds, calculateHalfSeconds, calculateQtrSeconds} from '../SituationPage/situation';
 
 
 const Result = () => {
@@ -24,7 +24,11 @@ const Result = () => {
         minutes: situationData?.minutes || '',
         seconds: situationData?.seconds || '',
         offenseTimeouts: situationData?.offenseTimeouts || '',
-        defenseTimeouts: situationData?.defenseTimeouts || ''
+        defenseTimeouts: situationData?.defenseTimeouts || '',
+        expYards: situationData?.expYards || '',
+        playHistory: situationData?.playHistory || [], 
+        actualPlayType: 'run', // lets the user select what play actually ran
+        defenseCoverage: situationData?.defenseCoverage || 'UNKNOWN'
     });
 
     const handleInputChange = (field, value) => {
@@ -35,74 +39,82 @@ const Result = () => {
     };
 
     const submitUpdatedSituation = async () => {
-
-        console.log("DEBUG, quarter, minutes, seconds:", editableData.quarter, editableData.minutes, editableData.seconds);
-        console.log("Those values should be parsed as ints correctly in calculation functions.");
-
-        // Recalculate necessary values
+        // Calculate necessary values
         const ydLine100 = (editableData.ownOppMidfield === "own" ? 100 - parseInt(editableData.ydLine50) : editableData.ownOppMidfield === "midfield" ? 50 : editableData.ownOppMidfield === "opp" ? parseInt(editableData.ydLine50) : undefined);
         const goalToGo = (ydLine100 === parseInt(editableData.ydsToGo) ? 1 : 0);
         const scoreDiff = parseInt(editableData.offensePoints) - parseInt(editableData.defensePoints);
         const quarterSeconds = await calculateQtrSeconds(editableData.minutes, editableData.seconds);
         const halfSeconds = await calculateHalfSeconds(editableData.quarter, editableData.minutes, editableData.seconds);
         const gameSeconds = await calculateGameSeconds(editableData.quarter, editableData.minutes, editableData.seconds);
-        
-        /*
-            Situation array should follow this order:
-            const situationArray = `${down}, ${ydsToGo}, ${ydLine100}, ${goalToGo}, 
-                                    ${qtrSeconds}, ${halfSeconds}, ${gameSeconds}, ${scoreDiff}, 
-                                    ${finalOffenseTimeouts}, ${finalDefenseTimeouts}, ${offenseTeam}, ${defenseTeam}`;
-        */
-        
-        // Create updated situation array
-        const updatedSituationArray = [
-            editableData.down, editableData.ydsToGo, ydLine100, goalToGo, quarterSeconds, halfSeconds, 
-            gameSeconds, scoreDiff, parseInt(editableData.offenseTimeouts), parseInt(editableData.defenseTimeouts), 
-            editableData.offenseTeam, editableData.defenseTeam
-        ].join(',');
 
-        // First, send the updated situation to the backend to generate new visualization
-        fetch(`http://localhost:5000/suggestPlay/${updatedSituationArray}`, { method: 'GET' })
-            .then(response => {
-                if (response.ok) {
-                    // After the backend generates the new visualization, fetch it
-                    return fetch('http://localhost:5000/playVisualization', { method: 'GET' });
-                }
-                throw new Error('Failed to generate play suggestion');
-            })
-            .then(response => response.blob())
-            .then(imageBlob => {
-                // Update the visualization image
-                const imageObjectURL = URL.createObjectURL(imageBlob);
-                setVisualizationImage(imageObjectURL);
-            })
-            .catch(error => {
-                console.error("Error updating play visualization:", error);
+        // --- SEQUENCE LOGIC ---
+        // Calculate yards gained by comparing the old yardline to the new yardline
+        // (this logic assumes the team hasn't crossed midfield/changed possession for simplicity right now)
+        const oldYdLine100 = situationData.ydLine100 || 50; 
+        const yardsGained = oldYdLine100 - ydLine100; 
+
+        // Add the completed play to our history array
+        const updatedPlayHistory = [
+            ...editableData.playHistory, 
+            { play_type: editableData.actualPlayType, yards_gained: yardsGained }
+        ];
+
+        // Format for Flask
+        const currentSituation = {
+            down: parseInt(editableData.down),
+            ydstogo: parseInt(editableData.ydsToGo),
+            yardline_100: ydLine100,
+            goal_to_go: goalToGo,
+            quarter_seconds_remaining: quarterSeconds,
+            half_seconds_remaining: halfSeconds,
+            game_seconds_remaining: gameSeconds,
+            score_differential: scoreDiff,
+            posteam_timeouts_remaining: parseInt(editableData.offenseTimeouts),
+            defteam_timeouts_remaining: parseInt(editableData.defenseTimeouts),
+            posteam: editableData.offenseTeam,
+            defteam: editableData.defenseTeam,
+            defense_coverage_type: editableData.defenseCoverage
+        };
+
+        let newExpYards = null;
+        let newPlayVisualization = null;
+
+        try {
+            // POST to backend
+            const response = await fetch('http://localhost:5000/suggestPlay', { 
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    current_situation: currentSituation,
+                    play_history: updatedPlayHistory
+                })
             });
 
-        // Update the situationData display
-        navigate('/result', {
-            state: {
-                ...editableData,
-                situationArray: updatedSituationArray
-            }
-        }, { replace: true });
+            const data = await response.json();
+            newExpYards = data.expected_yards;
+            newPlayVisualization = data.play_visualization;
+            setVisualizationImage(`data:image/png;base64,${newPlayVisualization}`);
+
+        } catch (error) {
+            console.error("Error updating play visualization:", error);
+        }
+
+        // Update local state
+        setEditableData(prev => ({
+            ...prev,
+            expYards: newExpYards,
+            playVisualization: newPlayVisualization,
+            playHistory: updatedPlayHistory
+        }));
     };
 
     useEffect(() => {
         console.log("Received situation data:", situationData);
 
-        // Fetch the play visualization image from the Flask backend
-        fetch('http://localhost:5000/playVisualization', { method: 'GET' })
-            .then(response => response.blob())
-            .then(imageBlob => {
-                // Create a local URL of the image blob and set it as the visualization image source
-                const imageObjectURL = URL.createObjectURL(imageBlob);
-                setVisualizationImage(imageObjectURL);
-            })
-            .catch(error => {
-                console.error("Error fetching play visualization:", error);
-            });
+        // Set play visualization image when the page loads or when situationData changes
+        if (situationData?.playVisualization) {
+            setVisualizationImage(`data:image/png;base64,${situationData.playVisualization}`);
+        }
 
     }, [situationData]);
 
@@ -155,6 +167,24 @@ const Result = () => {
                             />
                         </div>
                         <div className="detail-item">
+                            <span className="detail-label">Defensive Coverage:</span>
+                            <select 
+                                className="detail-input" 
+                                value={editableData.defenseCoverage}
+                                onChange={(e) => handleInputChange('defenseCoverage', e.target.value)}
+                                style={{ width: '160px', fontSize: '16px' }}
+                            >
+                                <option value="UNKNOWN">Unknown</option>
+                                <option value="COVER_0">Cover 0</option>
+                                <option value="COVER_1">Cover 1</option>
+                                <option value="COVER_2">Cover 2</option>
+                                <option value="COVER_3">Cover 3</option>
+                                <option value="COVER_4">Cover 4</option>
+                                <option value="COVER_6">Cover 6</option>
+                                <option value="2_MAN">2-Man</option>
+                            </select>
+                        </div>
+                        <div className="detail-item">
                             <span className="detail-label">Score:</span>
                             <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
                                 <input 
@@ -200,9 +230,20 @@ const Result = () => {
                                 )}
                             </div>
                         </div>
-                        
-                        
-                        
+                        <div className="detail-item" style={{ border: '2px dashed #ff69ff' }}>
+                            <span className="detail-label">Play Type:</span>
+                            <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
+                                <select 
+                                    className="detail-input" 
+                                    value={editableData.actualPlayType}
+                                    onChange={(e) => handleInputChange('actualPlayType', e.target.value)}
+                                    style={{ width: '120px' }}
+                                >
+                                    <option value="run">RUN</option>
+                                    <option value="pass">PASS</option>
+                                </select>
+                            </div>
+                        </div>
                         <div className="detail-item">
                             <span className="detail-label">Down & Distance:</span>
                             <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
@@ -296,6 +337,8 @@ const Result = () => {
                     <div className="visualization-container">
                         <h2>Play Visualization:</h2>
                         <img src={visualizationImage} alt="Play Visualization" className="visualization-image" />
+                        <br />
+                        <h2>Expected Yards: {editableData.expYards}</h2>
                     </div>
                 </div>
             </div>

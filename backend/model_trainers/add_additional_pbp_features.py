@@ -116,5 +116,23 @@ def add_additional_pbp_features(df: pd.DataFrame) -> pd.DataFrame:
             ],
             include_lowest=True,
         )
+    # --- Play Sequence / History Features ---
+    if "game_id" in df_out.columns and "drive" in df_out.columns and "play_type" in df_out.columns:
+        grouping = ["game_id", "drive"]
+        
+        # 1. Previous play type
+        # .shift(1) looks exactly one row up within the same drive
+        temp_prev_play = df_out.groupby(grouping)["play_type"].shift(1)
+        df_out["prev_is_pass"] = (temp_prev_play == "pass").astype(int)
+        df_out["prev_is_run"] = (temp_prev_play == "run").astype(int)
+        
+        # 2. Previous yards gained
+        if "yards_gained" in df_out.columns:
+            df_out["prev_yards_gained"] = df_out.groupby(grouping)["yards_gained"].shift(1).fillna(0)
+            
+        # 3. Consecutive Plays Counter (2-play lookback)
+        temp_prev_play_2 = df_out.groupby(grouping)["play_type"].shift(2)
+        df_out["two_consecutive_runs"] = ((temp_prev_play == "run") & (temp_prev_play_2 == "run")).astype(int)
+        df_out["two_consecutive_passes"] = ((temp_prev_play == "pass") & (temp_prev_play_2 == "pass")).astype(int)
 
     return df_out
