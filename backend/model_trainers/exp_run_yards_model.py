@@ -7,9 +7,14 @@ from sklearn.metrics import mean_squared_error, r2_score, accuracy_score, classi
 import joblib
 import json
 from pathlib import Path
+import io
+import sys
+import os
+
 try:
     from .TeamElo import PlayClassifier, team_elos
 except ImportError:
+    sys.path.insert(0, os.path.dirname(__file__))
     from TeamElo import PlayClassifier, team_elos
 
 
@@ -117,10 +122,11 @@ def train_exp_yards_model_run():
     for i in range(10):
         print(f"Predicted: {y_pred[i]:.2f}, Actual: {y_test_clean.iloc[i]}")
 
-    # Save the model
+    # Save the model to the "models directory"
     MODEL_DIR.mkdir(parents=True, exist_ok=True)
-    joblib.dump(model, MODEL_DIR / "exp_yards_model_run.joblib")
-    print("Expected yards model for running plays trained and saved successfully.")
+    model_path = MODEL_DIR / "exp_yards_model_run.joblib"
+    joblib.dump(model, model_path)
+    print(f"Expected yards model for running plays successfully saved to {model_path}.")
 
 
 def predict_exp_yards_run(input_dict, model):
@@ -143,10 +149,6 @@ def predict_exp_yards_run(input_dict, model):
     # Make prediction
     prediction = model.predict(input_df_encoded)
     return prediction[0]
-
-
-
-
 
 
 

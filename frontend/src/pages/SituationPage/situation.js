@@ -349,7 +349,7 @@ const Situation = () => {
             console.error("Error calling Flask endpoint:", error);
         }
 
-        const situationArray = `${down}, ${ydsToGo}, ${ydLine100}, ${goalToGo}, ${qtrSeconds}, ${halfSeconds}, ${gameSeconds}, ${scoreDiff}, ${finalOffenseTimeouts}, ${finalDefenseTimeouts}, ${offenseTeam}, ${defenseTeam}`;
+        const situationArray = `${down}, ${ydsToGo}, ${ydLine100}, ${goalToGo}, ${qtrSeconds}, ${halfSeconds}, ${gameSeconds}, ${scoreDiff}, ${finalOffenseTimeouts}, ${finalDefenseTimeouts}, ${offenseTeam}, ${defenseTeam}, ${defenseCoverage}`;
         
         // Navigate to result page with situation data and show the play visualization
         navigate('/result', { 
@@ -368,6 +368,7 @@ const Situation = () => {
                 seconds,
                 offenseTimeouts: finalOffenseTimeouts,
                 defenseTimeouts: finalDefenseTimeouts,
+                defenseCoverage,
                 expYards,
                 playVisualization
             } 

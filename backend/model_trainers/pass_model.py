@@ -9,6 +9,9 @@ from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, classification_report
 import joblib
+import io
+import sys
+import os
 
 DATA_FILES = ["../data/merged_pass_model_data_2020.csv"]
 DATA_FILES.append("../data/merged_pass_model_data_2021.csv")
@@ -188,6 +191,8 @@ def train_target_model(X: pd.DataFrame, y: pd.Series, target: str) -> Dict[str, 
     #choose RandomForest (robust for categorical-heavy data)
     clf = RandomForestClassifier(
         n_estimators=200,
+        max_depth=15,
+        min_samples_leaf=10,
         class_weight="balanced",
         n_jobs=-1,
         random_state=RANDOM_STATE,
@@ -235,28 +240,6 @@ def train_all_targets(df: pd.DataFrame, targets: List[str]) -> Dict[str, Dict[st
             if not info:
                 continue
             models_info[target] = info
-            #save model and metadata
-            out_path = OUTPUT_DIR / f"pass_model_{target}.joblib"
-            joblib.dump(
-                {
-                    "model": info["model"],
-                    "feature_columns": X.columns.tolist(),
-                    "target": target,
-                },
-                out_path,
-            )
-            meta = {
-                "target": target,
-                "accuracy": info["accuracy"],
-                "train_time_s": info["train_time_s"],
-                "n_features": len(X.columns),
-                "n_samples": len(y),
-                "classes": info.get("classes", []),
-            }
-            meta_path = OUTPUT_DIR / f"pass_model_{target}_meta.json"
-            with open(meta_path, "w") as fh:
-                json.dump(meta, fh, indent=2)
-            print(f"Saved model -> {out_path}, metadata -> {meta_path}")
         except Exception as e:
             print(f"Failed for {target}: {e}")
             continue
@@ -332,10 +315,9 @@ if __name__ == "__main__":
     # Train the Pass models when running this file separately
     model = train_pass_models()
 
-    # Save the pass model to the models directory
+    # Save the trained pass models to the "models" directory
     model_dir = Path("../models")
     model_dir.mkdir(exist_ok=True)
-
     model_path = model_dir / "pass_models.joblib"
     joblib.dump(model, model_path)
-    print(f"Pass models saved to {model_path}")
+    print(f"Pass models successfully saved to {model_path}")

@@ -8,13 +8,16 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, classification_report
 import joblib
 from pathlib import Path
+import sys
+import os
+import io
+
 try:
     from .parse_personnel import add_personnel_features
-except ImportError:
-    from parse_personnel import add_personnel_features
-try:
     from .add_participation_features import add_participation_features
 except ImportError:
+    sys.path.insert(0, os.path.dirname(__file__))
+    from parse_personnel import add_personnel_features
     from add_participation_features import add_participation_features
 
 
@@ -261,15 +264,16 @@ if __name__ == "__main__":
     print("Starting all run model training")
     all_models: Dict[str, Dict[str, Any]] = train_run_models()
 
-    # Save the trained run models to the models directory
-    model_dir = Path("../models")
-    model_dir.mkdir(exist_ok=True)
-    model_path = model_dir / "run_models.joblib"
-    joblib.dump(all_models, model_path)
-    print(f"Run models saved to {model_path}")
-
     if all_models:
         print("\nAll model training complete")
         print(f"Trained {len(all_models)} models: {list(all_models.keys())}")
     else:
         print("\nModel training failed ---")
+
+    # Save the trained run models to the "models" directory
+    model_dir = Path("../models")
+    model_dir.mkdir(exist_ok=True)
+    model_path = model_dir / "run_models.joblib"
+    joblib.dump(all_models, model_path)
+    print(f"Run models successfully saved to {model_path}")
+    

@@ -8,10 +8,15 @@ from sklearn.metrics import accuracy_score, classification_report
 import joblib
 import json
 from pathlib import Path
+import sys
+import os
+import io
+
 try:
     from .add_additional_pbp_features import add_additional_pbp_features
     from .TeamElo import PlayClassifier, team_elos
 except ImportError:
+    sys.path.insert(0, os.path.dirname(__file__))
     from add_additional_pbp_features import add_additional_pbp_features
     from TeamElo import PlayClassifier, team_elos
 
@@ -27,10 +32,7 @@ def train_pbp_model():
     df = pd.merge(df, part_df[["game_id", "play_id", "defense_coverage_type"]], on=["game_id", "play_id"], how="left")
     df['defense_coverage_type'] = df['defense_coverage_type'].fillna('UNKNOWN')
 
-
     df_filtered = df[df['play_type'].isin(['run', 'pass'])].copy()
-
-
 
     # Filtering garbage time
     df_filtered = df_filtered[df_filtered['score_differential'].abs() <= 16] 
@@ -93,6 +95,7 @@ def train_pbp_model():
 
     return model, X_train_clean.columns.tolist()
 
+
 def predict_play(situation, trained_model, feature_columns):
     ''' Use the situation to determine the most optimal play type '''
     print(f"Down: {situation[0]}")
@@ -140,17 +143,13 @@ if __name__ == "__main__":
     # Train the PBP situation model when running this file separately
     model, feature_columns = train_pbp_model()
 
-    # Save the model and feature columns to the models directory
+    # Save the PBP situation model and feature colums to the "models" directory
     model_dir = Path("../models")
     model_dir.mkdir(exist_ok=True)
-    
-    # Save the trained model using joblib
+
     model_path = model_dir / "pbp_situation_model.joblib"
     joblib.dump(model, model_path)
-    print(f"Model saved to {model_path}")
     
-    # Save feature columns as JSON metadata
-    #feature_columns = X_train_clean.columns.tolist()
     metadata = {
         "feature_columns": feature_columns,
         "model_type": "RandomForestClassifier"
@@ -158,4 +157,6 @@ if __name__ == "__main__":
     meta_path = model_dir / "pbp_situation_model_meta.json"
     with open(meta_path, 'w') as f:
         json.dump(metadata, f, indent=2)
-    print(f"Metadata saved to {meta_path}")
+
+    print(f"PBP Situation Model successfully saved to {model_path}")
+    print(f"PBP Feature Columns successfully saved to {meta_path}")

@@ -7,9 +7,14 @@ from sklearn.metrics import mean_squared_error, r2_score, accuracy_score, classi
 import joblib
 import json
 from pathlib import Path
+import io
+import sys
+import os
+
 try:
     from .TeamElo import PlayClassifier, team_elos
 except ImportError:
+    sys.path.insert(0, os.path.dirname(__file__))
     from TeamElo import PlayClassifier, team_elos
 
 
@@ -187,12 +192,14 @@ def train_exp_yards_model_pass():
         print(f"P(complete): {p_complete[i]:.2f}, Yards if complete: {yards_if_complete[i]:.1f}, "
               f"Expected: {y_pred_combined[i]:.2f}, Actual: {y_test_actual.iloc[i]}")
 
-    # Save both models
+    # Save both models to the "models" directory
     MODEL_DIR.mkdir(parents=True, exist_ok=True)
-    joblib.dump(completion_model, MODEL_DIR / "completion_prob_model_pass.joblib")
-    joblib.dump(yards_model, MODEL_DIR / "exp_yards_if_complete_model_pass.joblib")
-    print("\nTwo-stage expected yards model for passing plays trained and saved successfully.")
-
+    completion_model_path = MODEL_DIR / "completion_prob_model_pass.joblib"
+    joblib.dump(completion_model, completion_model_path)
+    print(f"Completion probability model for passing plays successfully saved to {completion_model_path}.")
+    yards_model_path = MODEL_DIR / "exp_yards_if_complete_model_pass.joblib"
+    joblib.dump(yards_model, yards_model_path)
+    print(f"Expected yards model for passing plays successfully saved to {yards_model_path}.")
 
 
 def predict_exp_yards_pass(input_dict, completion_model, yards_model):
@@ -217,10 +224,6 @@ def predict_exp_yards_pass(input_dict, completion_model, yards_model):
 
     expected_yards = p_complete * yards_if_complete
     return expected_yards, p_complete, yards_if_complete
-
-
-
-
 
 
 
