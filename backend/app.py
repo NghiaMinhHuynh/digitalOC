@@ -18,7 +18,7 @@ from routeDrawer.playDraw import visualize_play
 
 
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": ["http://localhost:3000", "http://127.0.0.1:3000"]}})
+CORS(app, resources={r"/*": {"origins": "*"}})  # Enable CORS for all routes and origins
 
 
 # Load the PBP, run, pass, and expected yards models when the application starts
