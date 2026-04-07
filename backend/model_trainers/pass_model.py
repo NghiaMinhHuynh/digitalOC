@@ -197,6 +197,8 @@ def train_target_model(X: pd.DataFrame, y: pd.Series, target: str) -> Dict[str, 
     #choose RandomForest (robust for categorical-heavy data)
     clf = RandomForestClassifier(
         n_estimators=200,
+        max_depth=15,
+        min_samples_leaf=10,
         class_weight="balanced",
         n_jobs=-1,
         random_state=RANDOM_STATE,
