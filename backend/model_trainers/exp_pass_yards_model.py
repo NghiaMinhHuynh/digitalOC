@@ -17,12 +17,6 @@ except ImportError:
     sys.path.insert(0, os.path.dirname(__file__))
     from TeamElo import PlayClassifier, team_elos
 
-try:
-    from ..read_write_oci_storage import write_to_object_storage, bucket_name
-except ImportError:
-    sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
-    from read_write_oci_storage import write_to_object_storage, bucket_name
-
 
 BASE_DIR = Path(__file__).resolve().parent
 BACKEND_DIR = BASE_DIR.parent
@@ -198,17 +192,14 @@ def train_exp_yards_model_pass():
         print(f"P(complete): {p_complete[i]:.2f}, Yards if complete: {yards_if_complete[i]:.1f}, "
               f"Expected: {y_pred_combined[i]:.2f}, Actual: {y_test_actual.iloc[i]}")
 
-    # Save both models to Oracle Cloud Storage
-    completion_buffer = io.BytesIO()
-    joblib.dump(completion_model, completion_buffer)
-    write_to_object_storage(bucket_name, "completion_prob_model_pass.joblib", completion_buffer.getvalue())
-    print("Completion probability model for passing plays uploaded to Oracle Cloud Storage successfully.")
-
-    yards_buffer = io.BytesIO()
-    joblib.dump(yards_model, yards_buffer)
-    write_to_object_storage(bucket_name, "exp_yards_if_complete_model_pass.joblib", yards_buffer.getvalue())
-    print("Expected yards model for passing plays uploaded to Oracle Cloud Storage successfully.")
-
+    # Save both models to the "models" directory
+    MODEL_DIR.mkdir(parents=True, exist_ok=True)
+    completion_model_path = MODEL_DIR / "completion_prob_model_pass.joblib"
+    joblib.dump(completion_model, completion_model_path)
+    print(f"Completion probability model for passing plays successfully saved to {completion_model_path}.")
+    yards_model_path = MODEL_DIR / "exp_yards_if_complete_model_pass.joblib"
+    joblib.dump(yards_model, yards_model_path)
+    print(f"Expected yards model for passing plays successfully saved to {yards_model_path}.")
 
 
 def predict_exp_yards_pass(input_dict, completion_model, yards_model):
@@ -233,10 +224,6 @@ def predict_exp_yards_pass(input_dict, completion_model, yards_model):
 
     expected_yards = p_complete * yards_if_complete
     return expected_yards, p_complete, yards_if_complete
-
-
-
-
 
 
 

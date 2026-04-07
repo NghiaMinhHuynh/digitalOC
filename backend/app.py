@@ -15,21 +15,23 @@ from model_trainers.pass_model import predict_pass_metrics
 from model_trainers.exp_run_yards_model import predict_exp_yards_run
 from model_trainers.exp_pass_yards_model import predict_exp_yards_pass
 from routeDrawer.playDraw import visualize_play
-from read_write_oci_storage import read_from_object_storage, bucket_name
 
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": ["http://localhost:3000", "http://127.0.0.1:3000"]}})
 
 
-# Load the PBP, run, pass, and expected yards models from the Oracle Cloud Storage when the application starts
-pbp_model = joblib.load(io.BytesIO(read_from_object_storage(bucket_name, "pbp_situation_model.joblib")))
-run_models = joblib.load(io.BytesIO(read_from_object_storage(bucket_name, "run_models.joblib")))
-pass_models = joblib.load(io.BytesIO(read_from_object_storage(bucket_name, "pass_models.joblib")))
-exp_run_yards_model = joblib.load(io.BytesIO(read_from_object_storage(bucket_name, "exp_yards_model_run.joblib")))
-completion_prob_model_pass = joblib.load(io.BytesIO(read_from_object_storage(bucket_name, "completion_prob_model_pass.joblib")))
-exp_yards_if_complete_model_pass = joblib.load(io.BytesIO(read_from_object_storage(bucket_name, "exp_yards_if_complete_model_pass.joblib")))
-metadata = json.loads(read_from_object_storage(bucket_name, "pbp_situation_model_meta.json"))
+# Load the PBP, run, pass, and expected yards models when the application starts
+model_dir = Path("models")
+model_dir.mkdir(exist_ok=True)
+pbp_model = joblib.load(model_dir / "pbp_situation_model.joblib")
+run_models = joblib.load(model_dir / "run_models.joblib")
+pass_models = joblib.load(model_dir / "pass_models.joblib")
+exp_run_yards_model = joblib.load(model_dir / "exp_yards_model_run.joblib")
+completion_prob_model_pass = joblib.load(model_dir / "completion_prob_model_pass.joblib")
+exp_yards_if_complete_model_pass = joblib.load(model_dir / "exp_yards_if_complete_model_pass.joblib")
+with open(model_dir / "pbp_situation_model_meta.json", 'r') as f:
+    metadata = json.load(f)
 pbp_feature_columns = metadata["feature_columns"]
 
 

@@ -20,13 +20,6 @@ except ImportError:
     from add_additional_pbp_features import add_additional_pbp_features
     from TeamElo import PlayClassifier, team_elos
 
-try:
-    from ..read_write_oci_storage import write_to_object_storage, bucket_name
-except ImportError:
-    sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
-    from read_write_oci_storage import write_to_object_storage, bucket_name
-
-
 
 def train_pbp_model():
     pbp_files = [pd.read_csv("../data/pbp_2024_0.csv", low_memory=False), pd.read_csv("../data/pbp_2024_1.csv", low_memory=False)]
@@ -39,10 +32,7 @@ def train_pbp_model():
     df = pd.merge(df, part_df[["game_id", "play_id", "defense_coverage_type"]], on=["game_id", "play_id"], how="left")
     df['defense_coverage_type'] = df['defense_coverage_type'].fillna('UNKNOWN')
 
-
     df_filtered = df[df['play_type'].isin(['run', 'pass'])].copy()
-
-
 
     # Filtering garbage time
     df_filtered = df_filtered[df_filtered['score_differential'].abs() <= 16] 
@@ -105,6 +95,7 @@ def train_pbp_model():
 
     return model, X_train_clean.columns.tolist()
 
+
 def predict_play(situation, trained_model, feature_columns):
     ''' Use the situation to determine the most optimal play type '''
     print(f"Down: {situation[0]}")
@@ -152,15 +143,20 @@ if __name__ == "__main__":
     # Train the PBP situation model when running this file separately
     model, feature_columns = train_pbp_model()
 
-    # Save the model and feature columns to Oracle Cloud Storage
-    model_buffer = io.BytesIO()
-    joblib.dump(model, model_buffer)
-    write_to_object_storage(bucket_name, "pbp_situation_model.joblib", model_buffer.getvalue())
+    # Save the PBP situation model and feature colums to the "models" directory
+    model_dir = Path("../models")
+    model_dir.mkdir(exist_ok=True)
 
+    model_path = model_dir / "pbp_situation_model.joblib"
+    joblib.dump(model, model_path)
+    
     metadata = {
         "feature_columns": feature_columns,
         "model_type": "RandomForestClassifier"
     }
-    write_to_object_storage(bucket_name, "pbp_situation_model_meta.json", json.dumps(metadata, indent=2))
+    meta_path = model_dir / "pbp_situation_model_meta.json"
+    with open(meta_path, 'w') as f:
+        json.dump(metadata, f, indent=2)
 
-    print("Model and metadata uploaded to Oracle Cloud Storage successfully.")
+    print(f"PBP Situation Model successfully saved to {model_path}")
+    print(f"PBP Feature Columns successfully saved to {meta_path}")

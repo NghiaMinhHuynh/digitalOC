@@ -17,12 +17,6 @@ except ImportError:
     sys.path.insert(0, os.path.dirname(__file__))
     from TeamElo import PlayClassifier, team_elos
 
-try:
-    from ..read_write_oci_storage import write_to_object_storage, bucket_name
-except ImportError:
-    sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
-    from read_write_oci_storage import write_to_object_storage, bucket_name
-
 
 BASE_DIR = Path(__file__).resolve().parent
 BACKEND_DIR = BASE_DIR.parent
@@ -128,11 +122,11 @@ def train_exp_yards_model_run():
     for i in range(10):
         print(f"Predicted: {y_pred[i]:.2f}, Actual: {y_test_clean.iloc[i]}")
 
-    # Save the model to Oracle Cloud Storage    
-    model_buffer = io.BytesIO()
-    joblib.dump(model, model_buffer)
-    write_to_object_storage(bucket_name, "exp_yards_model_run.joblib", model_buffer.getvalue())
-    print("Expected yards model for running plays uploaded to Oracle Cloud Storage successfully.")
+    # Save the model to the "models directory"
+    MODEL_DIR.mkdir(parents=True, exist_ok=True)
+    model_path = MODEL_DIR / "exp_yards_model_run.joblib"
+    joblib.dump(model, model_path)
+    print(f"Expected yards model for running plays successfully saved to {model_path}.")
 
 
 def predict_exp_yards_run(input_dict, model):
@@ -155,10 +149,6 @@ def predict_exp_yards_run(input_dict, model):
     # Make prediction
     prediction = model.predict(input_df_encoded)
     return prediction[0]
-
-
-
-
 
 
 
