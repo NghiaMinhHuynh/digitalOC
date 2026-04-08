@@ -12,10 +12,10 @@ import sys
 import os
 
 try:
-    from .TeamElo import PlayClassifier, team_elos
+    from .TeamElo import PlayClassifier, get_team_elos
 except ImportError:
     sys.path.insert(0, os.path.dirname(__file__))
-    from TeamElo import PlayClassifier, team_elos
+    from TeamElo import PlayClassifier, get_team_elos
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -45,6 +45,7 @@ def train_exp_yards_model_run():
     def get_elo(row):
         team = row["posteam"]
         category = row["play_category"]
+        team_elos = get_team_elos()
         return team_elos.get(team, {}).get(category, 1000.0)
     df_filtered["elo_score"] = df_filtered.apply(get_elo, axis=1)
     

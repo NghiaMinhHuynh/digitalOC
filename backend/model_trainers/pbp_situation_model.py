@@ -14,11 +14,11 @@ import io
 
 try:
     from .add_additional_pbp_features import add_additional_pbp_features
-    from .TeamElo import PlayClassifier, team_elos
+    from .TeamElo import PlayClassifier, get_team_elos
 except ImportError:
     sys.path.insert(0, os.path.dirname(__file__))
     from add_additional_pbp_features import add_additional_pbp_features
-    from TeamElo import PlayClassifier, team_elos
+    from TeamElo import PlayClassifier, get_team_elos
 
 
 def train_pbp_model():
@@ -47,6 +47,7 @@ def train_pbp_model():
     def get_elo(row):
         team = row["posteam"]
         category = row["play_category"]
+        team_elos = get_team_elos()
         return team_elos.get(team, {}).get(category, 1000.0)
 
     df_filtered["elo_score"] = df_filtered.apply(get_elo, axis=1)
