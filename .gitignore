@@ -20,3 +20,10 @@ backend/model_trainers/__pycache__/add_additional_pbp_features.cpython-312.pyc
 backend/__pycache__/add_additional_pbp_features.cpython-312.pyc
 backend/__pycache__/read_write_oci_storage.cpython-312.pyc
 backend/.env.backend
+backend/models/completion_prob_model_pass.joblib
+backend/models/exp_yards_if_complete_model_pass.joblib
+backend/models/exp_yards_model_run.joblib
+backend/models/pass_models.joblib
+backend/models/pbp_situation_model_meta.json
+backend/models/pbp_situation_model.joblib
+backend/models/run_models.joblib
