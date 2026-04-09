@@ -15,10 +15,13 @@ import io
 try:
     from .parse_personnel import add_personnel_features
     from .add_participation_features import add_participation_features
+    from .upload_to_release import upload_model_to_release
 except ImportError:
     sys.path.insert(0, os.path.dirname(__file__))
     from parse_personnel import add_personnel_features
     from add_participation_features import add_participation_features
+    from upload_to_release import upload_model_to_release
+    
 
 
 def train_run_models() -> Dict[str, Dict[str, Any]]:
@@ -270,10 +273,6 @@ if __name__ == "__main__":
     else:
         print("\nModel training failed ---")
 
-    # Save the trained run models to the "models" directory
-    model_dir = Path("../models")
-    model_dir.mkdir(exist_ok=True)
-    model_path = model_dir / "run_models.joblib"
-    joblib.dump(all_models, model_path)
-    print(f"Run models successfully saved to {model_path}")
+    # Save the trained run models to GitHub Releases
+    upload_model_to_release(all_models, "run_model.joblib", "run-model")
     

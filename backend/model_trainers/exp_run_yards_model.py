@@ -13,9 +13,11 @@ import os
 
 try:
     from .TeamElo import PlayClassifier, get_team_elos
+    from .upload_to_release import upload_model_to_release
 except ImportError:
     sys.path.insert(0, os.path.dirname(__file__))
     from TeamElo import PlayClassifier, get_team_elos
+    from upload_to_release import upload_model_to_release
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -123,11 +125,7 @@ def train_exp_yards_model_run():
     for i in range(10):
         print(f"Predicted: {y_pred[i]:.2f}, Actual: {y_test_clean.iloc[i]}")
 
-    # Save the model to the "models directory"
-    MODEL_DIR.mkdir(parents=True, exist_ok=True)
-    model_path = MODEL_DIR / "exp_yards_model_run.joblib"
-    joblib.dump(model, model_path)
-    print(f"Expected yards model for running plays successfully saved to {model_path}.")
+    return model
 
 
 def predict_exp_yards_run(input_dict, model):
@@ -154,4 +152,6 @@ def predict_exp_yards_run(input_dict, model):
 
 
 if __name__ == "__main__":
-    train_exp_yards_model_run()
+    # Save the trained expected yards for run model to GitHub Releases
+    model = train_exp_yards_model_run()
+    upload_model_to_release(model, "exp_run_yards_model.joblib", "exp-run-yards-model")

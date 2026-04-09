@@ -15,10 +15,13 @@ import io
 try:
     from .add_additional_pbp_features import add_additional_pbp_features
     from .TeamElo import PlayClassifier, get_team_elos
+    from .upload_to_release import upload_model_to_release
 except ImportError:
     sys.path.insert(0, os.path.dirname(__file__))
     from add_additional_pbp_features import add_additional_pbp_features
     from TeamElo import PlayClassifier, get_team_elos
+    from upload_to_release import upload_model_to_release
+    
 
 
 def train_pbp_model():
@@ -97,7 +100,7 @@ def train_pbp_model():
     return model, X_train_clean.columns.tolist()
 
 
-def predict_play(situation, trained_model, feature_columns):
+def predict_play(situation, trained_model):
     ''' Use the situation to determine the most optimal play type '''
     print(f"Down: {situation[0]}")
     print(f"Yards to go: {situation[1]}")
@@ -112,6 +115,12 @@ def predict_play(situation, trained_model, feature_columns):
     print(f"Offensive team: {situation[10]}")
     print(f"Defensive team: {situation[11]}")
     print()
+
+    # Load the play-by-play situation feature columns
+    _features_path = Path(__file__).parent / "pbp_situation_features.json"
+    with open(_features_path, 'r') as f:
+        metadata = json.load(f)
+    feature_columns = metadata["feature_columns"]
 
     situation_df = pd.DataFrame([situation], columns=['down', 'ydstogo', 'yardline_100', 'goal_to_go', 'quarter_seconds_remaining',
          'half_seconds_remaining', 'game_seconds_remaining', 'score_differential', 
@@ -144,20 +153,15 @@ if __name__ == "__main__":
     # Train the PBP situation model when running this file separately
     model, feature_columns = train_pbp_model()
 
-    # Save the PBP situation model and feature colums to the "models" directory
-    model_dir = Path("../models")
-    model_dir.mkdir(exist_ok=True)
-
-    model_path = model_dir / "pbp_situation_model.joblib"
-    joblib.dump(model, model_path)
+    # Save the PBP situation model to GitHub Releases
+    upload_model_to_release(model, "pbp_situation_model.joblib", "pbp-model")
     
+    # Save the Feature Columns locally
     metadata = {
         "feature_columns": feature_columns,
         "model_type": "RandomForestClassifier"
     }
-    meta_path = model_dir / "pbp_situation_model_meta.json"
+    meta_path = Path(__file__).parent / "pbp_situation_features.json"
     with open(meta_path, 'w') as f:
         json.dump(metadata, f, indent=2)
-
-    print(f"PBP Situation Model successfully saved to {model_path}")
     print(f"PBP Feature Columns successfully saved to {meta_path}")

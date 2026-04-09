@@ -8,6 +8,7 @@ import json
 import matplotlib
 matplotlib.use('Agg')  # Use non-interactive backend for Flask
 import matplotlib.pyplot as plt
+import urllib.request
 
 from model_trainers.pbp_situation_model import predict_play
 from model_trainers.run_model import predict_run_metrics
@@ -21,18 +22,20 @@ app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})  # Enable CORS for all routes and origins
 
 
-# Load the PBP, run, pass, and expected yards models when the application starts
-model_dir = Path("models")
-model_dir.mkdir(exist_ok=True)
-pbp_model = joblib.load(model_dir / "pbp_situation_model.joblib")
-run_models = joblib.load(model_dir / "run_models.joblib")
-pass_models = joblib.load(model_dir / "pass_models.joblib")
-exp_run_yards_model = joblib.load(model_dir / "exp_yards_model_run.joblib")
-completion_prob_model_pass = joblib.load(model_dir / "completion_prob_model_pass.joblib")
-exp_yards_if_complete_model_pass = joblib.load(model_dir / "exp_yards_if_complete_model_pass.joblib")
-with open(model_dir / "pbp_situation_model_meta.json", 'r') as f:
-    metadata = json.load(f)
-pbp_feature_columns = metadata["feature_columns"]
+# Load the PBP, run, pass, and expected yards models from GitHub Releases when the application starts
+def load_model_from_url(url: str):
+    with urllib.request.urlopen(url) as response:
+        buffer = io.BytesIO(response.read())
+    return joblib.load(buffer)
+
+BASE_URL = "https://github.com/nworobec/digitalOC/releases/download"
+
+pbp_model = load_model_from_url(f"{BASE_URL}/pbp-model/pbp_situation_model.joblib")
+run_models = load_model_from_url(f"{BASE_URL}/run-model/run_model.joblib")
+pass_models = load_model_from_url(f"{BASE_URL}/pass-model/pass_model.joblib")
+exp_run_yards_model = load_model_from_url(f"{BASE_URL}/exp-run-yards-model/exp_run_yards_model.joblib")
+completion_prob_model = load_model_from_url(f"{BASE_URL}/completion-prob-model/completion_prob_model.joblib")
+exp_pass_yards_model = load_model_from_url(f"{BASE_URL}/exp-pass-yards-model/exp_pass_yards_model.joblib")
 
 
 @app.route("/", methods=['GET'])
@@ -106,7 +109,7 @@ def suggest_play():
     ]
 
     # Predict whether the play type should be a run or pass
-    prediction_int, confidence = predict_play(situation, trained_model=pbp_model, feature_columns=pbp_feature_columns)
+    prediction_int, confidence = predict_play(situation, trained_model=pbp_model)
 
     # 1 = Pass Intent (Passes, Sacks, Scrambles), 0 = Run Intent
     prediction = 'pass' if prediction_int == 1 else 'run'
@@ -177,7 +180,7 @@ def suggest_play():
             "defense_coverage_type": situation[19]
         }
 
-        p_complete_and_exp_yards = predict_exp_yards_pass(pass_play_input, completion_prob_model_pass, exp_yards_if_complete_model_pass)
+        p_complete_and_exp_yards = predict_exp_yards_pass(pass_play_input, completion_prob_model, exp_pass_yards_model)
         exp_yards = f"{p_complete_and_exp_yards[0].round(2)}\n% will be complete: {(p_complete_and_exp_yards[1]*100).round(0)}"
         play_visualization = visualize_play(pass_play_input)
 
