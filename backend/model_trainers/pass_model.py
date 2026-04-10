@@ -2,7 +2,6 @@ import time
 import json
 from pathlib import Path
 from typing import Dict, List, Any, Tuple
-
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
@@ -12,6 +11,12 @@ import joblib
 import io
 import sys
 import os
+
+try:
+    from .upload_to_release import upload_model_to_release
+except ImportError: 
+    sys.path.insert(0, os.path.dirname(__file__))
+    from upload_to_release import upload_model_to_release
 
 DATA_FILES = ["../data/merged_pass_model_data_2020.csv"]
 DATA_FILES.append("../data/merged_pass_model_data_2021.csv")
@@ -315,9 +320,5 @@ if __name__ == "__main__":
     # Train the Pass models when running this file separately
     model = train_pass_models()
 
-    # Save the trained pass models to the "models" directory
-    model_dir = Path("../models")
-    model_dir.mkdir(exist_ok=True)
-    model_path = model_dir / "pass_models.joblib"
-    joblib.dump(model, model_path)
-    print(f"Pass models successfully saved to {model_path}")
+    # Save the trained pass models to GitHub Releases
+    upload_model_to_release(model, "pass_model.joblib", "pass-model")

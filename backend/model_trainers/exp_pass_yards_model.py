@@ -12,10 +12,12 @@ import sys
 import os
 
 try:
-    from .TeamElo import PlayClassifier, team_elos
+    from .TeamElo import PlayClassifier, get_team_elos
+    from .upload_to_release import upload_model_to_release
 except ImportError:
     sys.path.insert(0, os.path.dirname(__file__))
-    from TeamElo import PlayClassifier, team_elos
+    from TeamElo import PlayClassifier, get_team_elos
+    from upload_to_release import upload_model_to_release
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -47,6 +49,7 @@ def train_exp_yards_model_pass():
     def get_elo(row):
         team = row["posteam"]
         category = row["play_category"]
+        team_elos = get_team_elos()
         return team_elos.get(team, {}).get(category, 1000.0)
     df_filtered["elo_score"] = df_filtered.apply(get_elo, axis=1)
 
@@ -192,14 +195,7 @@ def train_exp_yards_model_pass():
         print(f"P(complete): {p_complete[i]:.2f}, Yards if complete: {yards_if_complete[i]:.1f}, "
               f"Expected: {y_pred_combined[i]:.2f}, Actual: {y_test_actual.iloc[i]}")
 
-    # Save both models to the "models" directory
-    MODEL_DIR.mkdir(parents=True, exist_ok=True)
-    completion_model_path = MODEL_DIR / "completion_prob_model_pass.joblib"
-    joblib.dump(completion_model, completion_model_path)
-    print(f"Completion probability model for passing plays successfully saved to {completion_model_path}.")
-    yards_model_path = MODEL_DIR / "exp_yards_if_complete_model_pass.joblib"
-    joblib.dump(yards_model, yards_model_path)
-    print(f"Expected yards model for passing plays successfully saved to {yards_model_path}.")
+    return completion_model, yards_model
 
 
 def predict_exp_yards_pass(input_dict, completion_model, yards_model):
@@ -228,4 +224,7 @@ def predict_exp_yards_pass(input_dict, completion_model, yards_model):
 
 
 if __name__ == "__main__":
-    train_exp_yards_model_pass()
+    # Save the completion probability and yards-if-complete models to GitHub Releases
+    completion_model, yards_model = train_exp_yards_model_pass()
+    upload_model_to_release(completion_model, "completion_prob_model.joblib", "completion-prob-model")
+    upload_model_to_release(yards_model, "exp_pass_yards_model.joblib", "exp-pass-yards-model")
