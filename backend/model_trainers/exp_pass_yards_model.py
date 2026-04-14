@@ -130,7 +130,7 @@ def train_exp_yards_model_pass():
     print(f"Completed passes for yards model: {df_complete.shape[0]}")
 
     X_yards = df_complete[feature_cols]
-    y_yards = df_complete['yards_gained'].clip(-5, 40)  # Wider clip range since these are all completions
+    y_yards = df_complete['epa'].clip(-5, 40)  # Wider clip range since these are all completions
 
     X_train_yd, X_test_yd, y_train_yd, y_test_yd = train_test_split(
         X_yards, y_yards, test_size=0.2, random_state=42

@@ -81,7 +81,7 @@ def train_exp_yards_model_run():
     print(X.head(10))
 
     # target variable
-    y = df_filtered['yards_gained'].clip(-5, 20) # Clip extreme values (reduces noise from breakaway runs/big losses)
+    y = df_filtered['epa'].clip(-5, 20) # Clip extreme values (reduces noise from breakaway runs/big losses)
     print(y.head(10))
 
     # Split the data between X and y

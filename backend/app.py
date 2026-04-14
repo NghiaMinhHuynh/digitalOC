@@ -109,10 +109,16 @@ def suggest_play():
     ]
 
     # Predict whether the play type should be a run or pass
-    prediction_int, confidence = predict_play(situation, trained_model=pbp_model)
+    forced_play = current_situation.get('forced_play_type')
 
-    # 1 = Pass Intent (Passes, Sacks, Scrambles), 0 = Run Intent
-    prediction = 'pass' if prediction_int == 1 else 'run'
+    if forced_play:
+        print(f"COACH OVERRIDE ACTIVATED: Forcing a {forced_play.upper()}")
+        prediction = forced_play.lower() 
+    else:
+        # Predict whether the play type should be a run or pass
+        prediction_int, confidence = predict_play(situation, trained_model=pbp_model)
+        # 1 = Pass Intent (Passes, Sacks, Scrambles), 0 = Run Intent
+        prediction = 'pass' if prediction_int == 1 else 'run'
     
     exp_yards = None
     play_visualization = None
