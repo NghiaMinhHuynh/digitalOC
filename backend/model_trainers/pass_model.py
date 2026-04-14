@@ -329,14 +329,14 @@ def predict_pass_metrics(situation, trained_models):
 
 def predict_pass_metric_candidates(situation, trained_models, top_k=3):
     situation_df = pd.DataFrame([situation], columns=[
-        'down','ydstogo','yardline_100','goal_to_go',
-        'quarter_seconds_remaining','half_seconds_remaining',
-        'game_seconds_remaining','score_differential',
-        'posteam_timeouts_remaining','defteam_timeouts_remaining',
-        'posteam','defteam',
-        'is_midfield_aggression','is_deep_redzone',
-        'prev_is_pass','prev_is_run','prev_yards_gained',
-        'two_consecutive_runs','two_consecutive_passes','defense_coverage_type'
+        'down', 'ydstogo', 'yardline_100', 'goal_to_go',
+        'quarter_seconds_remaining', 'half_seconds_remaining',
+        'game_seconds_remaining', 'score_differential',
+        'posteam_timeouts_remaining', 'defteam_timeouts_remaining',
+        'posteam', 'defteam',
+        'is_midfield_aggression', 'is_deep_redzone',
+        'prev_is_pass', 'prev_is_run', 'prev_yards_gained',
+        'two_consecutive_runs', 'two_consecutive_passes', 'defense_coverage_type'
     ])
 
     situation_df = add_football_intelligence_features(situation_df)
@@ -345,7 +345,20 @@ def predict_pass_metric_candidates(situation, trained_models, top_k=3):
 
     results = {}
 
-    for target, model_info in trained_models.items():
+    required_targets = [
+        "pass_length",
+        "pass_location",
+        "route",
+        "receiver_position",
+        "offense_formation",
+        "offense_personnel"
+    ]
+
+    for target in required_targets:
+        if target not in trained_models:
+            continue
+
+        model_info = trained_models[target]
         model = model_info["model"]
         model_features = model_info["feature_columns"]
 
@@ -358,15 +371,28 @@ def predict_pass_metric_candidates(situation, trained_models, top_k=3):
         probs = model.predict_proba(X)[0]
         classes = model.classes_
 
-        top_indices = np.argsort(probs)[::-1][:top_k]
+        actual_k = min(top_k, len(classes))
+        top_indices = np.argsort(probs)[::-1][:actual_k]
 
         results[target] = [
             {"label": classes[i], "prob": float(probs[i])}
             for i in top_indices
         ]
 
+    missing_targets = [t for t in required_targets if t not in results or len(results[t]) == 0]
+    if missing_targets:
+        raise ValueError(f"Missing predictions for targets: {missing_targets}")
+
+    available_k = min(
+        top_k,
+        len(results["pass_length"]),
+        len(results["pass_location"]),
+        len(results["route"]),
+        len(results["receiver_position"])
+    )
+
     plays = []
-    for i in range(top_k):
+    for i in range(available_k):
         play = {
             "pass_length": results["pass_length"][i]["label"],
             "pass_location": results["pass_location"][i]["label"],
