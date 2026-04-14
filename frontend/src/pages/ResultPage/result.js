@@ -73,7 +73,8 @@ const Result = () => {
             defteam_timeouts_remaining: parseInt(editableData.defenseTimeouts),
             posteam: editableData.offenseTeam,
             defteam: editableData.defenseTeam,
-            defense_coverage_type: editableData.defenseCoverage
+            defense_coverage_type: editableData.defenseCoverage,
+            forced_play_type: editableData.actualPlayType
         };
 
         let newExpYards = null;
