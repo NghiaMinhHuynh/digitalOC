@@ -7,17 +7,10 @@ from sklearn.metrics import mean_squared_error, r2_score, accuracy_score, classi
 import joblib
 import json
 from pathlib import Path
-import io
-import sys
-import os
-
 try:
-    from .TeamElo import PlayClassifier, get_team_elos
-    from .upload_to_release import upload_model_to_release
+    from .TeamElo import PlayClassifier, team_elos
 except ImportError:
-    sys.path.insert(0, os.path.dirname(__file__))
-    from TeamElo import PlayClassifier, get_team_elos
-    from upload_to_release import upload_model_to_release
+    from TeamElo import PlayClassifier, team_elos
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -49,7 +42,6 @@ def train_exp_yards_model_pass():
     def get_elo(row):
         team = row["posteam"]
         category = row["play_category"]
-        team_elos = get_team_elos()
         return team_elos.get(team, {}).get(category, 1000.0)
     df_filtered["elo_score"] = df_filtered.apply(get_elo, axis=1)
 
@@ -58,13 +50,14 @@ def train_exp_yards_model_pass():
     def get_participation_info(row):
         game_id = row["game_id"]
         play_id = row["play_id"]
-        participation_row = pbp_participation_file[(pbp_participation_file["nflverse_game_id"] == game_id) & (pbp_participation_file["play_id"] == play_id)]
+        participation_row = pbp_participation_file[(pbp_participation_file["nflverse_game_id"] == game_id) & 
+                                                  (pbp_participation_file["play_id"] == play_id)]
         
         if not participation_row.empty:
-            return participation_row.iloc[0]["offense_formation"], participation_row.iloc[0]["offense_personnel"], participation_row.iloc[0].get("defense_coverage_type", "UNKNOWN")
+            return participation_row.iloc[0]["offense_formation"], participation_row.iloc[0]["offense_personnel"]
         else:
-            return np.nan, np.nan, "UNKNOWN"
-    df_filtered["offense_formation"], df_filtered["offense_personnel"], df_filtered["defense_coverage_type"] = zip(*df_filtered.apply(get_participation_info, axis=1))
+            return np.nan, np.nan
+    df_filtered["offense_formation"], df_filtered["offense_personnel"] = zip(*df_filtered.apply(get_participation_info, axis=1))
 
     # Situational features
     df_filtered["is_redzone"] = (df_filtered["yardline_100"] <= 20).astype(int)
@@ -80,8 +73,8 @@ def train_exp_yards_model_pass():
                     'yardline_100', 'goal_to_go', 'quarter_seconds_remaining', 'half_seconds_remaining', 
                     'game_seconds_remaining', 'score_differential', 'posteam_timeouts_remaining', 
                     'defteam_timeouts_remaining', 'offense_formation', 'offense_personnel',
-                    'is_redzone', 'is_goal_line', 'is_short_yardage', 'defense_coverage_type']
-    categorical_cols = ['posteam', 'defteam', 'pass_length', 'pass_location', 'offense_formation', 'offense_personnel', 'defense_coverage_type']
+                    'is_redzone', 'is_goal_line', 'is_short_yardage']
+    categorical_cols = ['posteam', 'defteam', 'pass_length', 'pass_location', 'offense_formation', 'offense_personnel']
 
     # ========== STAGE 1: Completion Probability Model ==========
     print("\n" + "="*60)
@@ -130,7 +123,7 @@ def train_exp_yards_model_pass():
     print(f"Completed passes for yards model: {df_complete.shape[0]}")
 
     X_yards = df_complete[feature_cols]
-    y_yards = df_complete['epa'].clip(-5, 40)  # Wider clip range since these are all completions
+    y_yards = df_complete['yards_gained'].clip(-5, 40)  # Wider clip range since these are all completions
 
     X_train_yd, X_test_yd, y_train_yd, y_test_yd = train_test_split(
         X_yards, y_yards, test_size=0.2, random_state=42
@@ -195,7 +188,12 @@ def train_exp_yards_model_pass():
         print(f"P(complete): {p_complete[i]:.2f}, Yards if complete: {yards_if_complete[i]:.1f}, "
               f"Expected: {y_pred_combined[i]:.2f}, Actual: {y_test_actual.iloc[i]}")
 
-    return completion_model, yards_model
+    # Save both models
+    MODEL_DIR.mkdir(parents=True, exist_ok=True)
+    joblib.dump(completion_model, MODEL_DIR / "completion_prob_model_pass.joblib")
+    joblib.dump(yards_model, MODEL_DIR / "exp_yards_if_complete_model_pass.joblib")
+    print("\nTwo-stage expected yards model for passing plays trained and saved successfully.")
+
 
 
 def predict_exp_yards_pass(input_dict, completion_model, yards_model):
@@ -205,7 +203,7 @@ def predict_exp_yards_pass(input_dict, completion_model, yards_model):
     input_df = pd.DataFrame([input_dict])
 
     # One-hot encode categorical columns
-    categorical_cols = ['posteam', 'defteam', 'pass_length', 'pass_location', 'offense_formation', 'offense_personnel', 'defense_coverage_type']
+    categorical_cols = ['posteam', 'defteam', 'pass_length', 'pass_location', 'offense_formation', 'offense_personnel']
     input_df_encoded = pd.get_dummies(input_df, columns=categorical_cols, drop_first=True)
 
     # Align with completion model columns and predict P(complete)
@@ -223,8 +221,9 @@ def predict_exp_yards_pass(input_dict, completion_model, yards_model):
 
 
 
+
+
+
+
 if __name__ == "__main__":
-    # Save the completion probability and yards-if-complete models to GitHub Releases
-    completion_model, yards_model = train_exp_yards_model_pass()
-    upload_model_to_release(completion_model, "completion_prob_model.joblib", "completion-prob-model")
-    upload_model_to_release(yards_model, "exp_pass_yards_model.joblib", "exp-pass-yards-model")
+    train_exp_yards_model_pass()

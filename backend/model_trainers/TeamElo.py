@@ -3,6 +3,20 @@ import numpy as np
 import nflreadpy as nfl
 from pathlib import Path
 
+BASE_DIR = Path(__file__).resolve().parent
+DATA_DIR = BASE_DIR.parent / "data"
+
+if not DATA_DIR.exists():
+    raise FileNotFoundError(
+        f"Data directory not found at {DATA_DIR}. Expected backend/data after reorganization."
+    )
+
+# Load data using the backend-level data directory
+df0 = pd.read_csv(DATA_DIR / "pbp_2020_0.csv", low_memory=False)
+df1 = pd.read_csv(DATA_DIR / "pbp_2020_1.csv", low_memory=False)
+
+merged = pd.concat([df0, df1], ignore_index=True)
+
 
 class PlayClassifier:
     @staticmethod
@@ -36,6 +50,7 @@ class PlayClassifier:
         elif row.get("sack") == 1:
             return "sack"
 
+     
         if row.get("pass_attempt") == 1:
             air_yards = row.get("air_yards")
             if pd.isna(air_yards):
@@ -53,6 +68,8 @@ class PlayClassifier:
             except:
                 return "pass"
             
+
+
         # --- RUN PLAYS ---
         elif row.get("rush_attempt") == 1:
             gap = str(row.get("run_gap")).lower() if pd.notna(row.get("run_gap")) else ""
@@ -61,9 +78,11 @@ class PlayClassifier:
             elif gap == "end":
                 return "outside_run"
 
+
         return "other"
 
 
+        
 class Team:
     def __init__(self, name: str, df: pd.DataFrame):
         """
@@ -169,6 +188,7 @@ class Team:
 
         return rates
     
+    
     def success_rate_by_playType(self):
         """
         Calculate the success rate for each basic play type (run, pass).
@@ -249,13 +269,20 @@ class Team:
             float: Success rate against blitzes (0–1).
         """
         df = self.df[self.df["posteam"] == self.name].copy()
+
+        
         df = df.dropna(subset=["number_of_pass_rushers", "yards_gained", "was_pressure"])
+
+        
         blitz_df = df[df["number_of_pass_rushers"] > 4]
 
         if blitz_df.empty:
             return 0.0  
+
        
         blitz_df["unsuccessful"] = (blitz_df["was_pressure"]) | (blitz_df["yards_gained"] < 0)
+
+       
         success_ratio = 1 - blitz_df["unsuccessful"].mean()
 
         return round(success_ratio, 3)
@@ -291,6 +318,11 @@ class Team:
 
         return stats
 
+    
+
+
+    
+
     def __repr__(self):
         """
         Return a string representation of the team with number of offensive snaps.
@@ -300,7 +332,7 @@ class Team:
         """
         return f"<Team {self.name}: {self.offensive_snaps()} offensive snaps>"
 
-
+merged["play_category"] = merged.apply(PlayClassifier.get_category, axis=1)
 def compute_elo_per_play_type(category_stats: pd.DataFrame) -> dict:
     """
     Compute a separate ELO-style score for each primary play category.
@@ -323,9 +355,11 @@ def compute_elo_per_play_type(category_stats: pd.DataFrame) -> dict:
             norm_success = (success - 0.4) / (0.6 - 0.4)  # Assume success ~ 0.4 to 0.6
             norm_epa = (epa + 0.5) / 1.0                  # Assume EPA ~ -0.5 to +0.5
 
+            
             norm_success = np.clip(norm_success, 0, 1)
             norm_epa = np.clip(norm_epa, 0, 1)
 
+          
             elo = 1000 + 400 * (w_success * norm_success + w_epa * norm_epa)
             elo_scores[category] = round(elo, 2)
         else:
@@ -334,32 +368,21 @@ def compute_elo_per_play_type(category_stats: pd.DataFrame) -> dict:
     return elo_scores
 
 
-BASE_DIR = Path(__file__).resolve().parent
-DATA_DIR = BASE_DIR.parent / "data"
+# Build ELO for all teams
+merged["play_category"] = merged.apply(PlayClassifier.get_category, axis=1)
 
-_team_elos = None
+team_elos = {}
+for team in merged["posteam"].dropna().unique():
+    t = Team(team, merged)
+    stats = t.offensive_category_stats()
+    team_elos[team] = compute_elo_per_play_type(stats)
 
-def get_team_elos():
-    global _team_elos
-    if _team_elos is not None:
-        return _team_elos
 
-    df0 = pd.read_csv(DATA_DIR / "pbp_2020_0.csv", low_memory=False)
-    df1 = pd.read_csv(DATA_DIR / "pbp_2020_1.csv", low_memory=False)
-    merged = pd.concat([df0, df1], ignore_index=True)
+elo_df = pd.DataFrame(team_elos).T  # Transpose so teams are rows
 
-    # Build ELO for all teams
-    merged["play_category"] = merged.apply(PlayClassifier.get_category, axis=1)
+# Save to CSV in backend/data
+elo_df.to_csv(DATA_DIR / "team_elos_2020.csv", index_label="team")
 
-    team_elos = {}
-    for team in merged["posteam"].dropna().unique():
-        t = Team(team, merged)
-        stats = t.offensive_category_stats()
-        team_elos[team] = compute_elo_per_play_type(stats)
-
-    _team_elos = team_elos
-    
-    return _team_elos
 
 
         

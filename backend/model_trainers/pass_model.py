@@ -2,21 +2,13 @@ import time
 import json
 from pathlib import Path
 from typing import Dict, List, Any, Tuple
+
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, classification_report
 import joblib
-import io
-import sys
-import os
-
-try:
-    from .upload_to_release import upload_model_to_release
-except ImportError: 
-    sys.path.insert(0, os.path.dirname(__file__))
-    from upload_to_release import upload_model_to_release
 
 DATA_FILES = ["../data/merged_pass_model_data_2020.csv"]
 DATA_FILES.append("../data/merged_pass_model_data_2021.csv")
@@ -196,8 +188,6 @@ def train_target_model(X: pd.DataFrame, y: pd.Series, target: str) -> Dict[str, 
     #choose RandomForest (robust for categorical-heavy data)
     clf = RandomForestClassifier(
         n_estimators=200,
-        max_depth=15,
-        min_samples_leaf=10,
         class_weight="balanced",
         n_jobs=-1,
         random_state=RANDOM_STATE,
@@ -245,6 +235,28 @@ def train_all_targets(df: pd.DataFrame, targets: List[str]) -> Dict[str, Dict[st
             if not info:
                 continue
             models_info[target] = info
+            #save model and metadata
+            out_path = OUTPUT_DIR / f"pass_model_{target}.joblib"
+            joblib.dump(
+                {
+                    "model": info["model"],
+                    "feature_columns": X.columns.tolist(),
+                    "target": target,
+                },
+                out_path,
+            )
+            meta = {
+                "target": target,
+                "accuracy": info["accuracy"],
+                "train_time_s": info["train_time_s"],
+                "n_features": len(X.columns),
+                "n_samples": len(y),
+                "classes": info.get("classes", []),
+            }
+            meta_path = OUTPUT_DIR / f"pass_model_{target}_meta.json"
+            with open(meta_path, "w") as fh:
+                json.dump(meta, fh, indent=2)
+            print(f"Saved model -> {out_path}, metadata -> {meta_path}")
         except Exception as e:
             print(f"Failed for {target}: {e}")
             continue
@@ -315,10 +327,93 @@ def predict_pass_metrics(situation, trained_models):
 
     return predictions
 
+def predict_pass_metric_candidates(situation, trained_models, top_k=3):
+    situation_df = pd.DataFrame([situation], columns=[
+        'down', 'ydstogo', 'yardline_100', 'goal_to_go',
+        'quarter_seconds_remaining', 'half_seconds_remaining',
+        'game_seconds_remaining', 'score_differential',
+        'posteam_timeouts_remaining', 'defteam_timeouts_remaining',
+        'posteam', 'defteam',
+        'is_midfield_aggression', 'is_deep_redzone',
+        'prev_is_pass', 'prev_is_run', 'prev_yards_gained',
+        'two_consecutive_runs', 'two_consecutive_passes', 'defense_coverage_type'
+    ])
+
+    situation_df = add_football_intelligence_features(situation_df)
+    features = build_global_feature_set(situation_df)
+    situation_encoded, _ = global_encode(situation_df, features)
+
+    results = {}
+
+    required_targets = [
+        "pass_length",
+        "pass_location",
+        "route",
+        "receiver_position",
+        "offense_formation",
+        "offense_personnel"
+    ]
+
+    for target in required_targets:
+        if target not in trained_models:
+            continue
+
+        model_info = trained_models[target]
+        model = model_info["model"]
+        model_features = model_info["feature_columns"]
+
+        for col in model_features:
+            if col not in situation_encoded.columns:
+                situation_encoded[col] = 0
+
+        X = situation_encoded[model_features]
+
+        probs = model.predict_proba(X)[0]
+        classes = model.classes_
+
+        actual_k = min(top_k, len(classes))
+        top_indices = np.argsort(probs)[::-1][:actual_k]
+
+        results[target] = [
+            {"label": classes[i], "prob": float(probs[i])}
+            for i in top_indices
+        ]
+
+    missing_targets = [t for t in required_targets if t not in results or len(results[t]) == 0]
+    if missing_targets:
+        raise ValueError(f"Missing predictions for targets: {missing_targets}")
+
+    available_k = min(
+        top_k,
+        len(results["pass_length"]),
+        len(results["pass_location"]),
+        len(results["route"]),
+        len(results["receiver_position"])
+    )
+
+    plays = []
+    for i in range(available_k):
+        play = {
+            "pass_length": results["pass_length"][i]["label"],
+            "pass_location": results["pass_location"][i]["label"],
+            "route": results["route"][i]["label"],
+            "receiver_position": results["receiver_position"][i]["label"],
+            "offense_formation": results["offense_formation"][0]["label"],
+            "offense_personnel": results["offense_personnel"][0]["label"],
+            "confidence": results["pass_length"][i]["prob"]
+        }
+        plays.append(play)
+
+    return plays
 
 if __name__ == "__main__":
     # Train the Pass models when running this file separately
     model = train_pass_models()
 
-    # Save the trained pass models to GitHub Releases
-    upload_model_to_release(model, "pass_model.joblib", "pass-model")
+    # Save the pass model to the models directory
+    model_dir = Path("../models")
+    model_dir.mkdir(exist_ok=True)
+
+    model_path = model_dir / "pass_models.joblib"
+    joblib.dump(model, model_path)
+    print(f"Pass models saved to {model_path}")
