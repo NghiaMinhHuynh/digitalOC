@@ -130,6 +130,9 @@ def suggest_play():
     else:
         # Predict whether the play type should be a run or pass
         prediction_int, confidence_raw = predict_play(situation, trained_model=pbp_model)
+        prediction_int = to_scalar(prediction_int, int)
+        confidence = to_scalar(confidence, float)
+
         # 1 = Pass Intent (Passes, Sacks, Scrambles), 0 = Run Intent
         prediction = 'pass' if prediction_int == 1 else 'run'
         confidence = confidence_raw.tolist() if hasattr(confidence_raw, 'tolist') else confidence_raw
