@@ -7,10 +7,17 @@ from sklearn.metrics import mean_squared_error, r2_score, accuracy_score, classi
 import joblib
 import json
 from pathlib import Path
+import io
+import sys
+import os
+
 try:
-    from .TeamElo import PlayClassifier, team_elos
+    from .TeamElo import PlayClassifier, get_team_elos
+    from .upload_to_release import upload_model_to_release
 except ImportError:
-    from TeamElo import PlayClassifier, team_elos
+    sys.path.insert(0, os.path.dirname(__file__))
+    from TeamElo import PlayClassifier, get_team_elos
+    from upload_to_release import upload_model_to_release
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -40,6 +47,7 @@ def train_exp_yards_model_run():
     def get_elo(row):
         team = row["posteam"]
         category = row["play_category"]
+        team_elos = get_team_elos()
         return team_elos.get(team, {}).get(category, 1000.0)
     df_filtered["elo_score"] = df_filtered.apply(get_elo, axis=1)
     
@@ -56,16 +64,16 @@ def train_exp_yards_model_run():
                                                   (pbp_participation_file["play_id"] == play_id)]
         
         if not participation_row.empty:
-            return participation_row.iloc[0]["offense_formation"], participation_row.iloc[0]["offense_personnel"]
+            return participation_row.iloc[0]["offense_formation"], participation_row.iloc[0]["offense_personnel"], participation_row.iloc[0].get("defense_coverage_type", "UNKNOWN")
         else:
-            return np.nan, np.nan
-    df_filtered["offense_formation"], df_filtered["offense_personnel"] = zip(*df_filtered.apply(get_participation_info, axis=1))
+            return np.nan, np.nan, "UNKNOWN"
+    df_filtered["offense_formation"], df_filtered["offense_personnel"], df_filtered["defense_coverage_type"] = zip(*df_filtered.apply(get_participation_info, axis=1))
     
     # feature columns
     X = df_filtered[['run_gap', 'run_location', 'posteam', 'defteam', 'elo_score', 'down', 'ydstogo', 'yardline_100', 
                      'goal_to_go', 'quarter_seconds_remaining','half_seconds_remaining', 'game_seconds_remaining', 
                      'score_differential', 'posteam_timeouts_remaining', 'defteam_timeouts_remaining',
-                     'offense_formation', 'offense_personnel']]
+                     'offense_formation', 'offense_personnel', 'defense_coverage_type']]
     df_filtered["is_redzone"] = (df_filtered["yardline_100"] <= 20).astype(int)
     df_filtered["is_goal_line"] = ((df_filtered["goal_to_go"] == 1) & (df_filtered["yardline_100"] <= 10)).astype(int)
     df_filtered["is_short_yardage"] = ((df_filtered["ydstogo"] <= 2) & (df_filtered["down"] >= 3)).astype(int)
@@ -73,14 +81,14 @@ def train_exp_yards_model_run():
     print(X.head(10))
 
     # target variable
-    y = df_filtered['yards_gained'].clip(-5, 20) # Clip extreme values (reduces noise from breakaway runs/big losses)
+    y = df_filtered['epa'].clip(-5, 20) # Clip extreme values (reduces noise from breakaway runs/big losses)
     print(y.head(10))
 
     # Split the data between X and y
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
     # One-hot encode categorical columns for the X values (non-numeric data)
-    categorical_cols = ['posteam', 'defteam', 'run_gap', 'run_location', 'offense_formation', 'offense_personnel']
+    categorical_cols = ['posteam', 'defteam', 'run_gap', 'run_location', 'offense_formation', 'offense_personnel', 'defense_coverage_type']
     X_train_encoded = pd.get_dummies(X_train, columns=categorical_cols, drop_first=True) # Using pd.get_dummies (one-hot encoding)
     X_test_encoded = pd.get_dummies(X_test, columns=categorical_cols, drop_first=True)
     X_train_encoded, X_test_encoded = X_train_encoded.align(X_test_encoded, join='left', axis=1, fill_value=0) # Make sure train and test have same columns (important!)
@@ -117,10 +125,7 @@ def train_exp_yards_model_run():
     for i in range(10):
         print(f"Predicted: {y_pred[i]:.2f}, Actual: {y_test_clean.iloc[i]}")
 
-    # Save the model
-    MODEL_DIR.mkdir(parents=True, exist_ok=True)
-    joblib.dump(model, MODEL_DIR / "exp_yards_model_run.joblib")
-    print("Expected yards model for running plays trained and saved successfully.")
+    return model
 
 
 def predict_exp_yards_run(input_dict, model):
@@ -130,7 +135,7 @@ def predict_exp_yards_run(input_dict, model):
     input_df = pd.DataFrame([input_dict])
     
     # One-hot encode categorical columns
-    categorical_cols = ['posteam', 'defteam', 'run_gap', 'run_location', 'offense_formation', 'offense_personnel']
+    categorical_cols = ['posteam', 'defteam', 'run_gap', 'run_location', 'offense_formation', 'offense_personnel', 'defense_coverage_type']
     input_df_encoded = pd.get_dummies(input_df, columns=categorical_cols, drop_first=True)
 
     # Align with training data columns
@@ -146,9 +151,7 @@ def predict_exp_yards_run(input_dict, model):
 
 
 
-
-
-
-
 if __name__ == "__main__":
-    train_exp_yards_model_run()
+    # Save the trained expected yards for run model to GitHub Releases
+    model = train_exp_yards_model_run()
+    upload_model_to_release(model, "exp_run_yards_model.joblib", "exp-run-yards-model")

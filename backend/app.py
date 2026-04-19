@@ -1,12 +1,14 @@
 import base64
-import json
-from pathlib import Path
-
+import io
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 import joblib
+from pathlib import Path
+import json
 import matplotlib
-matplotlib.use('Agg')
+matplotlib.use('Agg')  # Use non-interactive backend for Flask
+import matplotlib.pyplot as plt
+import urllib.request
 
 from model_trainers.pbp_situation_model import predict_play
 from model_trainers.run_model import predict_run_metric_candidates
@@ -17,27 +19,28 @@ from routeDrawer.playDraw import visualize_play
 
 
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": ["http://localhost:3000", "http://127.0.0.1:3000"]}})
+CORS(app, resources={r"/*": {"origins": "*"}})  # Enable CORS for all routes and origins
 
-# Load models
-model_dir = Path("models")
-model_dir.mkdir(exist_ok=True)
 
-pbp_model = joblib.load(model_dir / "pbp_situation_model.joblib")
-run_models = joblib.load(model_dir / "run_models.joblib")
-pass_models = joblib.load(model_dir / "pass_models.joblib")
-exp_run_yards_model = joblib.load(model_dir / "exp_yards_model_run.joblib")
-completion_prob_model_pass = joblib.load(model_dir / "completion_prob_model_pass.joblib")
-exp_yards_if_complete_model_pass = joblib.load(model_dir / "exp_yards_if_complete_model_pass.joblib")
+# Load the PBP, run, pass, and expected yards models from GitHub Releases when the application starts
+def load_model_from_url(url: str):
+    with urllib.request.urlopen(url) as response:
+        buffer = io.BytesIO(response.read())
+    return joblib.load(buffer)
 
-with open(model_dir / "pbp_situation_model_meta.json", "r") as f:
-    metadata = json.load(f)
-pbp_feature_columns = metadata["feature_columns"]
+BASE_URL = "https://github.com/nworobec/digitalOC/releases/download"
+
+pbp_model = load_model_from_url(f"{BASE_URL}/pbp-model/pbp_situation_model.joblib")
+run_models = load_model_from_url(f"{BASE_URL}/run-model/run_model.joblib")
+pass_models = load_model_from_url(f"{BASE_URL}/pass-model/pass_model.joblib")
+exp_run_yards_model = load_model_from_url(f"{BASE_URL}/exp-run-yards-model/exp_run_yards_model.joblib")
+completion_prob_model = load_model_from_url(f"{BASE_URL}/completion-prob-model/completion_prob_model.joblib")
+exp_pass_yards_model = load_model_from_url(f"{BASE_URL}/exp-pass-yards-model/exp_pass_yards_model.joblib")
 
 
 @app.route("/", methods=["GET"])
 def home():
-    return "<h1>Server is working</h1><p>"
+    return "<h1>Server is working</h1>"
 
 
 def to_scalar(value, cast_type=float):
@@ -117,17 +120,23 @@ def suggest_play():
         current_situation.get("defense_coverage_type", "UNKNOWN")
     ]
 
-    # Predict run vs pass first
-    prediction_int, confidence = predict_play(
-        situation,
-        trained_model=pbp_model,
-        feature_columns=pbp_feature_columns
-    )
+    # Predict whether the play type should be a run or pass
+    forced_play = current_situation.get('forced_play_type')
 
-    prediction_int = to_scalar(prediction_int, int)
-    confidence = to_scalar(confidence, float)
-    prediction = "pass" if prediction_int == 1 else "run"
+    if forced_play:
+        print(f"COACH OVERRIDE ACTIVATED: Forcing a {forced_play.upper()}")
+        prediction = forced_play.lower()
+        confidence = None
+    else:
+        # Predict whether the play type should be a run or pass
+        prediction_int, confidence_raw = predict_play(situation, trained_model=pbp_model)
+        prediction_int = to_scalar(prediction_int, int)
+        confidence_raw = to_scalar(confidence_raw, float)
 
+        # 1 = Pass Intent (Passes, Sacks, Scrambles), 0 = Run Intent
+        prediction = 'pass' if prediction_int == 1 else 'run'
+        confidence = confidence_raw.tolist() if hasattr(confidence_raw, 'tolist') else confidence_raw
+    
     play_outputs = []
 
     if prediction == "run":
@@ -153,18 +162,19 @@ def suggest_play():
                 "down": situation[0],
                 "ydstogo": situation[1],
                 "pass_length": None,
-                "pass_location": None,
-                "air_yards": None,
+                "pass_location": None, 
+                "air_yards": None, 
                 "run_location": run_location,
                 "run_gap": run_gap,
-                "rusher": "N/A",
-                "receiver": None,
+                "rusher": 'N/A', 
+                "receiver": None, 
                 "offense_formation": offense_formation,
                 "offense_personnel": personnel_rb_wr_te,
                 "route": None,
                 "involved_player_position": "RB",
                 "posteam": situation[10],
-                "defteam": situation[11]
+                "defteam": situation[11],
+                "defense_coverage_type": situation[19]
             }
 
             exp_yards = str(
@@ -211,28 +221,29 @@ def suggest_play():
                 "ydstogo": situation[1],
                 "pass_length": pass_length,
                 "pass_location": pass_location,
-                "air_yards": 10,
+                "air_yards": 10, # Placeholder value    
                 "run_location": None,
                 "run_gap": None,
                 "rusher": None,
-                "receiver": "N/A",
+                "receiver": 'N/A',
                 "offense_formation": offense_formation,
                 "offense_personnel": offense_personnel,
                 "route": route,
                 "involved_player_position": receiver_position,
                 "posteam": situation[10],
-                "defteam": situation[11]
+                "defteam": situation[11],
+                "defense_coverage_type": situation[19]
             }
 
             p_complete_and_exp_yards = predict_exp_yards_pass(
                 pass_play_input,
-                completion_prob_model_pass,
-                exp_yards_if_complete_model_pass
+                completion_prob_model,
+                exp_pass_yards_model
             )
 
             exp_yards = (
                 f"{p_complete_and_exp_yards[0].round(2)}\n"
-                f"% will be complete: {(p_complete_and_exp_yards[1] * 100).round(0)}"
+                f"({(p_complete_and_exp_yards[1] * 100).round(0)}% will be complete)"
             )
 
             play_visualization = visualize_play(pass_play_input)
@@ -264,4 +275,4 @@ def suggest_play():
 
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5000, host="0.0.0.0")
+    app.run(debug=True, port=5000, host='0.0.0.0', use_reloader=False)

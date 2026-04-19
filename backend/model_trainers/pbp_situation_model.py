@@ -8,18 +8,33 @@ from sklearn.metrics import accuracy_score, classification_report
 import joblib
 import json
 from pathlib import Path
+import sys
+import os
+import io
+
 try:
     from .add_additional_pbp_features import add_additional_pbp_features
-    from .TeamElo import PlayClassifier, team_elos
+    from .TeamElo import PlayClassifier, get_team_elos
+    from .upload_to_release import upload_model_to_release
 except ImportError:
+    sys.path.insert(0, os.path.dirname(__file__))
     from add_additional_pbp_features import add_additional_pbp_features
-    from TeamElo import PlayClassifier, team_elos
+    from TeamElo import PlayClassifier, get_team_elos
+    from upload_to_release import upload_model_to_release
+    
 
 
 def train_pbp_model():
     pbp_files = [pd.read_csv("../data/pbp_2024_0.csv", low_memory=False), pd.read_csv("../data/pbp_2024_1.csv", low_memory=False)]
     df = pd.concat(pbp_files, ignore_index=True).copy()
     df = add_additional_pbp_features(df)
+
+    part_df = pd.read_csv("../data/pbp_participation_2024.csv", low_memory=False)
+    # accounting for nflverse column naming differences 
+    part_df = part_df.rename(columns={"nflverse_game_id": "game_id"})
+    df = pd.merge(df, part_df[["game_id", "play_id", "defense_coverage_type"]], on=["game_id", "play_id"], how="left")
+    df['defense_coverage_type'] = df['defense_coverage_type'].fillna('UNKNOWN')
+
     df_filtered = df[df['play_type'].isin(['run', 'pass'])].copy()
 
     # Filtering garbage time
@@ -35,6 +50,7 @@ def train_pbp_model():
     def get_elo(row):
         team = row["posteam"]
         category = row["play_category"]
+        team_elos = get_team_elos()
         return team_elos.get(team, {}).get(category, 1000.0)
 
     df_filtered["elo_score"] = df_filtered.apply(get_elo, axis=1)
@@ -47,7 +63,7 @@ def train_pbp_model():
         'posteam', 'defteam', 'elo_score',
         # --- NEW SEQUENCE FEATURES ---
         'prev_is_pass', 'prev_is_run', 'prev_yards_gained', 
-        'two_consecutive_runs', 'two_consecutive_passes'
+        'two_consecutive_runs', 'two_consecutive_passes', 'defense_coverage_type'
     ]
     
     X = df_filtered[X_features]
@@ -55,8 +71,7 @@ def train_pbp_model():
     y = df_filtered['is_pass_intent'] 
 
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
-    categorical_cols = ['posteam', 'defteam']
+    categorical_cols = ['posteam', 'defteam', 'defense_coverage_type']
     X_train_encoded = pd.get_dummies(X_train, columns=categorical_cols, drop_first=True)
     X_test_encoded = pd.get_dummies(X_test, columns=categorical_cols, drop_first=True)
     X_train_encoded, X_test_encoded = X_train_encoded.align(X_test_encoded, join='left', axis=1, fill_value=0)
@@ -84,7 +99,8 @@ def train_pbp_model():
 
     return model, X_train_clean.columns.tolist()
 
-def predict_play(situation, trained_model, feature_columns):
+
+def predict_play(situation, trained_model):
     ''' Use the situation to determine the most optimal play type '''
     print(f"Down: {situation[0]}")
     print(f"Yards to go: {situation[1]}")
@@ -99,6 +115,12 @@ def predict_play(situation, trained_model, feature_columns):
     print(f"Offensive team: {situation[10]}")
     print(f"Defensive team: {situation[11]}")
     print()
+
+    # Load the play-by-play situation feature columns
+    _features_path = Path(__file__).parent / "pbp_situation_features.json"
+    with open(_features_path, 'r') as f:
+        metadata = json.load(f)
+    feature_columns = metadata["feature_columns"]
 
     situation_df = pd.DataFrame([situation], columns=['down', 'ydstogo', 'yardline_100', 'goal_to_go', 'quarter_seconds_remaining',
          'half_seconds_remaining', 'game_seconds_remaining', 'score_differential', 
@@ -131,22 +153,15 @@ if __name__ == "__main__":
     # Train the PBP situation model when running this file separately
     model, feature_columns = train_pbp_model()
 
-    # Save the model and feature columns to the models directory
-    model_dir = Path("../models")
-    model_dir.mkdir(exist_ok=True)
+    # Save the PBP situation model to GitHub Releases
+    upload_model_to_release(model, "pbp_situation_model.joblib", "pbp-model")
     
-    # Save the trained model using joblib
-    model_path = model_dir / "pbp_situation_model.joblib"
-    joblib.dump(model, model_path)
-    print(f"Model saved to {model_path}")
-    
-    # Save feature columns as JSON metadata
-    #feature_columns = X_train_clean.columns.tolist()
+    # Save the Feature Columns locally
     metadata = {
         "feature_columns": feature_columns,
         "model_type": "RandomForestClassifier"
     }
-    meta_path = model_dir / "pbp_situation_model_meta.json"
+    meta_path = Path(__file__).parent / "pbp_situation_features.json"
     with open(meta_path, 'w') as f:
         json.dump(metadata, f, indent=2)
-    print(f"Metadata saved to {meta_path}")
+    print(f"PBP Feature Columns successfully saved to {meta_path}")

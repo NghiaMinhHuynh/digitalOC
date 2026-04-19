@@ -410,7 +410,6 @@ const Result = () => {
                         ) : (
                             <p className="no-plays-message">No visualization available for this play.</p>
                         )}
-                        <img src={visualizationImage} alt="Play Visualization" className="visualization-image" />
                         <br />
                         <h2>Expected Points Added: {editableData.expYards}</h2>
                     </div>

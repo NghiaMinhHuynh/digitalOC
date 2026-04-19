@@ -63,35 +63,29 @@ export async function calculateGameSeconds(qtr, minutes, seconds) {
     return seconds + (minutes * 60); 
 }
 
-const API_BASE_URLS = [
-    'http://localhost:5000',
-    'http://localhost:5001'
-];
-
 export async function fetchSuggestedPlay(payload) {
     let lastError = null;
+    const REACT_APP_BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
 
-    for (const baseUrl of API_BASE_URLS) {
-        try {
-            const response = await fetch(`${baseUrl}/suggestPlay`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
+    try {
+        const response = await fetch(`${REACT_APP_BACKEND_URL}/suggestPlay`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
 
-            if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(`${baseUrl} returned ${response.status}: ${errorText}`);
-            }
-
-            return await response.json();
-        } catch (error) {
-            lastError = error;
-            console.warn(`Could not reach backend at ${baseUrl}:`, error);
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`${REACT_APP_BACKEND_URL} returned ${response.status}: ${errorText}`);
         }
+
+        return await response.json();
+    } catch (error) {
+        lastError = error;
+        console.warn(`Could not reach backend at ${REACT_APP_BACKEND_URL}:`, error);
     }
 
-    throw new Error(`Could not reach the backend at ${API_BASE_URLS.join(' or ')}. Last error: ${lastError?.message || 'unknown error'}`);
+    throw new Error(`Could not reach the backend at ${REACT_APP_BACKEND_URL}. Last error: ${lastError?.message || 'unknown error'}`);
 }
 
 export const normalizeSuggestedPlays = (data) => {
